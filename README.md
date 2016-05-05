@@ -37,6 +37,16 @@ scan = FuncScanner(modem, 0, os.environ['ROUTER_CODE'])
 while scan.current_pos < 101:
 	print(scan.scan().text)
 
+# And/or change wifi settings
+wifi = compal.WifiSettings(modem)
+settings = wifi.wifi_settings
+print(settings)
+
+new_settings = settings._replace(radio_2g=settings.radio_2g._replace(ssid='api_works'))
+wifi.update_wifi_settings(new_settings)
+
+print(wifi.wifi_settings)
+
 # And logout
 modem.logout()
 ```

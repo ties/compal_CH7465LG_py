@@ -79,6 +79,39 @@ Disable/Enable port forward:
 
 /getter.xml fun=121
   Firewall rules (XML)
+
+/getter.xml fun=300
+  Wifi settings
+
+/setter.xml fun=301
+  Change wifi settings
+
+  fun:301
+wlBandMode2g:1
+wlBandMode5g:1
+wlSsid2g:ssid24
+wlSsid5g:ssid5g
+wlBandwidth2g:2
+wlBandwidth5g:3
+wlTxMode2g:6
+wlTxMode5g:14
+wlMCastRate2g:1
+wlMCastRate5g:1
+wlHiden2g:2
+wlHiden5g:2
+wlCoexistence:1
+wlPSkey2g: keykeykey
+wlPSkey5g: key5gkey5g
+wlTxrate2g:0
+wlTxrate5g:0
+wlRekey2g:0
+wlRekey5g:0
+wlChannel2g:13
+wlChannel5g:0
+wlSecurity2g:8
+wlSecurity5g:8
+wlWpaalg2g:3
+wlWpaalg5g:3
 """
 import itertools
 import logging
@@ -269,6 +302,113 @@ class CompalPortForwards(object):
         LOGGER.debug(params)
 
         return self.modem.xml_setter(122, params)
+
+RadioSettings = namedtuple('RadioSettings', ['bss_coexistence', 'radio_2g',
+    'radio_5g', 'nv_country', 'channel_range'])
+BandSetting = namedtuple('BandSetting', ['mode', 'ssid', 'bss_enable', 'radio',
+    'bandwidth', 'tx_mode', 'multicast_rate', 'hidden', 'pre_shared_key',
+    'tx_rate', 're_key', 'channel', 'security', 'wpa_algorithm'])
+
+
+class WifiSettings(object):
+    def __init__(self, modem):
+        self.modem = modem
+
+    @property
+    def wifi_settings_xml(self):
+        return ET.fromstring(self.modem.xml_getter(300, {}).content)
+
+    @staticmethod
+    def band_setting(xml, band):
+        assert band in ('2g', '5g',)
+        band_number = int(band[0])
+        
+        def xv(attr, coherce=True):
+            val = xml.find(attr).text
+            try:  # Try to coherce to int. If it fails, return string
+                if not coherce:
+                    return val
+                return int(val)
+            except ValueError:
+                return val
+
+        def band_xv(attr, coherce=True):
+            try:
+                return xv('{}{}'.format(attr, band.upper()), coherce)
+            except AttributeError:
+                return xv('{}{}'.format(attr, band), coherce)
+
+
+        return BandSetting(
+            radio=band,
+            mode=bool(xv('Bandmode') & band_number),
+            ssid=band_xv('SSID', False),
+            bss_enable=bool(band_xv('BssEnable')),
+            bandwidth=band_xv('BandWidth'),
+            tx_mode=band_xv('TransmissionMode'),
+            multicast_rate=band_xv('MulticastRate'),
+            hidden=band_xv('HideNetwork'),
+            pre_shared_key=band_xv('PreSharedKey'),
+            tx_rate=band_xv('TransmissionRate'),
+            re_key=band_xv('GroupRekeyInterval'),
+            channel=band_xv('CurrentChannel'),
+            security=band_xv('SecurityMode'),
+            wpa_algorithm=band_xv('WpaAlgorithm')
+        )
+
+    @property
+    def wifi_settings(self):
+        xml = self.wifi_settings_xml
+
+        return RadioSettings(
+                radio_2g=WifiSettings.band_setting(xml, '2g'),
+                radio_5g=WifiSettings.band_setting(xml, '5g'),
+                nv_country=int(xml.find('NvCountry').text),
+                channel_range=int(xml.find('ChannelRange').text),
+                bss_coexistence=bool(xml.find('BssCoexistence').text)
+        )
+
+    def update_wifi_settings(self, settings):
+        # Create the object.
+        def transform_radio(rs): # rs = radio_settings
+            # Create the dict
+            out = OrderedDict([
+                ('BandMode', int(rs.mode)),
+                ('Ssid', rs.ssid),
+                ('Bandwidth', rs.bandwidth),
+                ('TxMode', rs.tx_mode),
+                ('MCastRate', rs.multicast_rate),
+                ('Hiden', int(rs.hidden)),
+                ('PSkey', rs.pre_shared_key),
+                ('Txrate', rs.tx_rate),
+                ('Rekey', rs.re_key),
+                ('Channel', rs.channel),
+                ('Security', rs.security),
+                ('Wpaalg', rs.wpa_algorithm)
+            ])
+
+            # Prefix 'wl', Postfix the band
+            return OrderedDict([('wl{}{}'.format(k, rs.radio), v) for (k, v) in
+                                out.items()])
+
+        # Alternate the two setting lists
+        out_s = []
+
+        for x, y in zip(transform_radio(settings.radio_2g).items(),
+                        transform_radio(settings.radio_5g).items()):
+            out_s.append(x)
+            out_s.append(y)
+
+            if y[0] == 'wlHiden5g':
+                out_s.append(('wlCoexistence', settings.bss_coexistence))
+
+        # Join the settings
+        out_settings = OrderedDict(out_s)
+
+        return self.modem.xml_setter(301, out_settings)
+
+
+                        
 
 
 class FuncScanner(object):
