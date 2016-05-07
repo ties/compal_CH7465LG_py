@@ -31,6 +31,24 @@ UPNP/DHCP settings
     DMZenable:
 2 => disabled.
 
+Firewall settings:
+/setter.xml, fun=116
+    firewallProtection:2
+    blockIpFragments:2
+    portScanDetection:2
+    synFloodDetection:2
+    IcmpFloodDetection:2
+    IcmpFloodDetectRate:15
+    action:
+    IPv6firewallProtection:
+    IPv6blockIpFragments:
+    IPv6portScanDetection:
+    IPv6synFloodDetection:
+    IPv6IcmpFloodDetection:
+    IPv6IcmpFloodDetectRate:
+=> disabled=2 
+
+
 fun = 300+ => wifi settings
   324: default wifi pwd
 
@@ -109,7 +127,7 @@ Static DHCP leases:
 
   fun:301
 wlBandMode2g:1
-wlBandMode5g:1
+elBandMode5g:1
 wlSsid2g:ssid24
 wlSsid5g:ssid5g
 wlBandwidth2g:2
@@ -283,6 +301,28 @@ class PortForwards(object):
                 enabled=bool(r_int('enable')), idd=bool(r_int('idd'))
             )
 
+    def update_firewall(self, enabled=False, fragment=False, port_scan=False,
+                        ip_flood=False, icmp_flood=False, icmp_rate=15):
+        assert enabled or not (fragment or port_scan or ip_flood or icmp_flood)
+
+        def b2i(b):  # Bool-2-int
+            return 1 if b else 2
+
+        return self.xml_setter(116, OrderedDict([
+            ('firewallProtection', b2i(enabled)),
+            ('blockIpFragments', ''),
+            ('portScanDetection', ''),
+            ('synFloodDetection', ''),
+            ('IcmpFloodDetection', ''),
+            ('IcmpFloodDetectRate', icmp_rate),
+            ('action', ''),
+            ('IPv6firewallProtection', ''),
+            ('IPv6blockIpFragments', ''),
+            ('IPv6portScanDetection', ''),
+            ('IPv6synFloodDetection', ''),
+            ('IPv6IcmpFloodDetection', ''),
+            ('IPv6IcmpFloodDetectRate', '')
+        ])
 
     def add_forward(self, local_ip, ext_port, int_port, proto: Proto,
                     enabled=True):
