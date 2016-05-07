@@ -20,6 +20,17 @@ fun=121
 fun=3 ==> login page
 fun=16 ==> logout
 
+UPNP/DHCP settings
+/setter.xml, fun=101
+    LanIP:
+    UPnP:2
+    DHCP_addr_s:
+    DHCP_addr_e:
+    subnet_Mask:
+    DMZ:
+    DMZenable:
+2 => disabled.
+
 fun = 300+ => wifi settings
   324: default wifi pwd
 
@@ -284,6 +295,7 @@ class PortForwards(object):
 
         return self.modem.xml_setter(122, OrderedDict([
             ('action', 'add'),
+            ('instance', ''),
             ('local_IP', local_ip),
             ('start_port', start_ext), ('end_port', end_ext),
             ('start_portIn', start_int), ('end_portIn', end_int),
