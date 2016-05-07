@@ -309,7 +309,7 @@ class PortForwards(object):
         def b2i(b):  # Bool-2-int
             return 1 if b else 2
 
-        return self.xml_setter(116, OrderedDict([
+        return self.modem.xml_setter(116, OrderedDict([
             ('firewallProtection', b2i(enabled)),
             ('blockIpFragments', ''),
             ('portScanDetection', ''),
