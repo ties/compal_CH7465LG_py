@@ -443,6 +443,15 @@ class DHCPSettings(object):
             'data': 'ADD,{ip},{mac};'.format(ip=ip, mac=mac)
         })
 
+    def set_upnp_status(self, enabled):
+        return self.modem.xml_setter(101, OrderedDict([
+            ('LanIP', ''),
+            ('UPnP', 1 if enabled else 2),
+            ('DHCP_addr_s', ''), ('DHCP_addr_e', ''),
+            ('subnet_Mask', ''),
+            ('DMZ', ''), ('DMZenable', '')
+        ]))
+
 class FuncScanner(object):
     def __init__(self, modem, pos, key):
         self.modem = modem
