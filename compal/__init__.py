@@ -80,6 +80,16 @@ Disable/Enable port forward:
 /getter.xml fun=121
   Firewall rules (XML)
 
+Get IP leases
+/getter.xml, fun=123
+  method: 2 => static lease
+
+Static DHCP leases:
+/setter.xml fun=148
+  token:1246383104
+  fun:148
+  data:ADD,<ip>,<mac>;
+
 /getter.xml fun=300
   Wifi settings
 
@@ -117,12 +127,16 @@ import itertools
 import logging
 import urllib
 
+
+
 import xml.etree.ElementTree as ET
 
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 from enum import Enum
 
 import requests
+
+from recordclass import recordclass
 
 
 LOGGER = logging.getLogger(__name__)
@@ -226,7 +240,7 @@ class Proto(Enum):
     both = 3
 
 
-PortForward = namedtuple('PortForward', ['local_ip', 'ext_port', 'int_port',
+PortForward = recordclass('PortForward', ['local_ip', 'ext_port', 'int_port',
         'proto', 'enabled', 'delete', 'idd', 'id', 'lan_ip'])
 # idd, id, lan_ip are None by default, delte is False by default
 PortForward.__new__.__defaults__ = (False, None, None, None,)
@@ -303,9 +317,9 @@ class CompalPortForwards(object):
 
         return self.modem.xml_setter(122, params)
 
-RadioSettings = namedtuple('RadioSettings', ['bss_coexistence', 'radio_2g',
+RadioSettings = recordclass('RadioSettings', ['bss_coexistence', 'radio_2g',
     'radio_5g', 'nv_country', 'channel_range'])
-BandSetting = namedtuple('BandSetting', ['mode', 'ssid', 'bss_enable', 'radio',
+BandSetting = recordclass('BandSetting', ['mode', 'ssid', 'bss_enable', 'radio',
     'bandwidth', 'tx_mode', 'multicast_rate', 'hidden', 'pre_shared_key',
     'tx_rate', 're_key', 'channel', 'security', 'wpa_algorithm'])
 
@@ -408,8 +422,14 @@ class WifiSettings(object):
         return self.modem.xml_setter(301, out_settings)
 
 
-                        
+class CompalDHCP(object):
+    def __init__(self, modem):
+        self.modem = modem
 
+    def add_static_lease(self, ip, mac):
+        return self.modem.xml_setter(148, {
+            'data': 'ADD,{ip},{mac};'.format(ip=ip, mac=mac)
+        })
 
 class FuncScanner(object):
     def __init__(self, modem, pos, key):
