@@ -279,8 +279,8 @@ class PortForwards(object):
         Add a port forward. int_port and ext_port can be ranges. Deletion param
         is ignored for now.
         """
-        start_int, end_int = itertools.repeat(int_port)
-        start_ext, end_ext = itertools.repeat(ext_port)
+        start_int, end_int = itertools.islice(itertools.repeat(int_port), 0, 2)
+        start_ext, end_ext = itertools.islice(itertools.repeat(ext_port), 0, 2)
 
         return self.modem.xml_setter(122, {
             'action': 'add',
