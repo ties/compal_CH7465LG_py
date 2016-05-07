@@ -46,7 +46,7 @@ Firewall settings:
     IPv6synFloodDetection:
     IPv6IcmpFloodDetection:
     IPv6IcmpFloodDetectRate:
-=> disabled=2 
+=> disabled=2
 
 
 fun = 300+ => wifi settings
@@ -185,8 +185,9 @@ class Compal(object):
         self.initial_res = self.get('/')
 
         if not self.initial_res.url.endswith('common_page/login.html'):
-            LOGGER.error("Was not redirected to login page - concurrent session?")
-    
+            LOGGER.error("Was not redirected to login page:"
+                         " concurrent session?")
+
     def url(self, path):
         while path.startswith('/'):
             path = path[1:]
@@ -322,7 +323,7 @@ class PortForwards(object):
             ('IPv6synFloodDetection', ''),
             ('IPv6IcmpFloodDetection', ''),
             ('IPv6IcmpFloodDetectRate', '')
-        ])
+        ]))
 
     def add_forward(self, local_ip, ext_port, int_port, proto: Proto,
                     enabled=True):
@@ -388,7 +389,7 @@ class WifiSettings(object):
     def band_setting(xml, band):
         assert band in ('2g', '5g',)
         band_number = int(band[0])
-        
+
         def xv(attr, coherce=True):
             val = xml.find(attr).text
             try:  # Try to coherce to int. If it fails, return string
@@ -505,7 +506,6 @@ class FuncScanner(object):
         res = self.modem.xml_getter(2, {})
         return res.status_code == 200
 
-     
     def scan(self):
         res = None
         while not res or res.text is '':
