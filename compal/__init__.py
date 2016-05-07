@@ -247,7 +247,7 @@ PortForward.__new__.__defaults__ = (False, None, None, None,)
 
 
 
-class CompalPortForwards(object):
+class PortForwards(object):
     def __init__(self, modem):
         self.modem = modem
 
@@ -422,7 +422,7 @@ class WifiSettings(object):
         return self.modem.xml_setter(301, out_settings)
 
 
-class CompalDHCP(object):
+class DHCPSettings(object):
     def __init__(self, modem):
         self.modem = modem
 
@@ -468,5 +468,5 @@ class FuncScanner(object):
 # How to use?
 # modem = Compal('192.168.178.1')
 # modem.login('1234567')
-# fw = CompalPortForwards(modem)
+# fw = PortForwards(modem)
 # print(list(fw.rules))

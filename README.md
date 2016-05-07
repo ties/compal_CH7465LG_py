@@ -16,7 +16,7 @@ from compal import *
 modem = Compal('192.168.178.1')
 modem.login(os.environ['ROUTER_CODE'])
 
-fw = CompalPortForwards(modem)
+fw = PortForwards(modem)
 
 def toggle_all_rules(fw, goal):
 	rules = list(fw.rules)
@@ -38,7 +38,7 @@ while scan.current_pos < 101:
 	print(scan.scan().text)
 
 # And/or change wifi settings
-wifi = compal.WifiSettings(modem)
+wifi = WifiSettings(modem)
 settings = wifi.wifi_settings
 print(settings)
 
@@ -46,6 +46,8 @@ new_settings = settings._replace(radio_2g=settings.radio_2g._replace(ssid='api_w
 wifi.update_wifi_settings(new_settings)
 
 print(wifi.wifi_settings)
+
+# And/or DHCPSettings
 
 # And logout
 modem.logout()
