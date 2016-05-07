@@ -282,15 +282,15 @@ class PortForwards(object):
         start_int, end_int = itertools.islice(itertools.repeat(int_port), 0, 2)
         start_ext, end_ext = itertools.islice(itertools.repeat(ext_port), 0, 2)
 
-        return self.modem.xml_setter(122, {
-            'action': 'add',
-            'local_IP': local_ip,
-            'start_port': start_ext, 'end_port': end_ext,
-            'start_portIn': start_int, 'end_portIn': end_int,
-            'protocol': proto.value,
-            'enable': int(enabled), 'delete': int(False),
-            'idd': ''
-        })
+        return self.modem.xml_setter(122, OrderedDict([
+            ('action', 'add'),
+            ('local_IP', local_ip),
+            ('start_port', start_ext), ('end_port', end_ext),
+            ('start_portIn', start_int), ('end_portIn', end_int),
+            ('protocol', proto.value),
+            ('enable', int(enabled)), ('delete', int(False)),
+            ('idd', '')
+        ]))
 
     def update_rules(self, rules):
         # Will iterate multiple times, ensure it is a list.
