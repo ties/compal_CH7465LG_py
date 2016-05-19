@@ -184,9 +184,24 @@ class Compal(object):
         LOGGER.debug("Getting initial token")
         self.initial_res = self.get('/')
 
-        if not self.initial_res.url.endswith('common_page/login.html'):
+        if self.initial_res.url.endswith('common_page/FirstInstallation.html'):
+            self.initial_setup()
+        elif not self.initial_res.url.endswith('common_page/login.html'):
             LOGGER.error("Was not redirected to login page:"
                          " concurrent session?")
+
+    def initial_setup(self):
+        """
+        Replay the settings made during initial setup
+        """
+        LOGGER.info("Initial setup: english.")
+
+        self.xml_setter(4, {'lang': 'en'})
+        self.xml_setter(20, {
+            'install': 0,
+            'iv': 1,
+            'en': 0
+        })
 
     def url(self, path):
         while path.startswith('/'):
