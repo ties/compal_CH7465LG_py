@@ -127,7 +127,7 @@ Static DHCP leases:
 
   fun:301
 wlBandMode2g:1
-elBandMode5g:1
+wlBandMode5g:1
 wlSsid2g:ssid24
 wlSsid5g:ssid5g
 wlBandwidth2g:2
@@ -151,6 +151,46 @@ wlSecurity2g:8
 wlSecurity5g:8
 wlWpaalg2g:3
 wlWpaalg5g:3
+
+/setter.xml fun=319
+  Wifi enable/disable radio's
+
+Similar to 301 except for bandmode (single value)
+
+fun:319
+wlBandMode:4
+wlSsid2g:ssid24
+wlSsid5g:ssid5g
+wlBandwidth2g:1
+wlBandwidth5g:3
+wlTxMode2g:6
+wlTxMode5g:14
+wlMCastRate2g:1
+wlMCastRate5g:1
+wlHiden2g:2
+wlHiden5g:2
+wlCoexistence:1
+wlPSkey2g:keykeykey
+wlPSkey5g:key5gkey5g
+wlTxrate2g:0
+wlTxrate5g:0
+wlRekey2g:0
+wlRekey5g:0
+wlChannel2g:0
+wlChannel5g:0
+wlSecurity2g:4
+wlSecurity5g:4
+wlWpaalg2g:2
+wlWpaalg5g:2
+
+/setter.xml fun=133
+ -> modem reboot
+
+## Factory reset:
+  * /getter.xml fun=324
+    * Response that contains the default ssid and password
+  * /setter.xml fun=7
+    * Factory reset starts
 """
 import itertools
 import logging
@@ -270,6 +310,16 @@ class Compal(object):
         self.session.cookies.update({'SID': SID})
 
         return res
+
+    def reboot(self):
+        return self.xml_setter(133, {})
+
+
+    def factory_reset(self):
+        default_settings = self.xml_getter(324, {})
+
+        self.xml_setter(7, {})
+        return default_settings
 
 
     def logout(self):
