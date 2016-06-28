@@ -232,13 +232,28 @@ class Compal(object):
             LOGGER.error("Was not redirected to login page:"
                          " concurrent session?")
 
-    def initial_setup(self):
+    def initial_setup(self, key):
         """
         Replay the settings made during initial setup
         """
         LOGGER.info("Initial setup: english.")
 
+        self.xml_getter(3, {})
+        self.xml_getter(21, {})
+        self.xml_getter(3, {})
+
         self.xml_setter(4, {'lang': 'en'})
+        # Login or change password? Not sure.
+        self.xml_setter(15, OrderedDict([
+            ('Username', 'admin'),
+            ('Password', key) 
+
+        ]))
+        # Get current wifi settings (?)
+        self.xml_getter(300, {})
+
+        # Some sheets with hints, no request
+        # installation is done:
         self.xml_setter(20, {
             'install': 0,
             'iv': 1,
