@@ -49,6 +49,10 @@ print(wifi.wifi_settings)
 
 # And/or DHCPSettings
 
+# If you want to go back to 'normal':
+# modem.reboot() # or
+# modem.factory_reset()
+
 # And logout
 modem.logout()
 ```
