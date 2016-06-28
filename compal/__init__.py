@@ -215,8 +215,10 @@ LOGGER.setLevel(logging.INFO)
 
 
 class Compal(object):
-    def __init__(self, ip):
+    def __init__(self, ip, timeout=10):
         self.ip = ip
+        self.timeout = timeout
+
         self.session = requests.Session()
 
         self.session.hooks['response'].append(self.token_handler)
@@ -274,12 +276,13 @@ class Compal(object):
         LOGGER.debug("POST [%s]: %s", path, data)
 
         res = self.session.post(self.url(path), data=data,
-                                allow_redirects=False, **kwargs)
+                                allow_redirects=False, timeout=self.timeout,
+                                **kwargs)
 
         return res
 
     def get(self, path, **kwargs):
-        res = self.session.get(self.url(path), **kwargs)
+        res = self.session.get(self.url(path), timeout=self.timeout, **kwargs)
 
         self.session.headers.update({'Referer': res.url})
         return res
@@ -312,13 +315,19 @@ class Compal(object):
         return res
 
     def reboot(self):
-        return self.xml_setter(133, {})
+        try:
+            return self.xml_setter(133, {})
+        except:
+            return None
 
 
     def factory_reset(self):
         default_settings = self.xml_getter(324, {})
 
-        self.xml_setter(7, {})
+        try:
+            self.xml_setter(7, {})
+        except:
+            pass
         return default_settings
 
 
