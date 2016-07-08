@@ -13,8 +13,8 @@ import os
 import time
 from compal import *
 
-modem = Compal('192.168.178.1')
-modem.login(os.environ['ROUTER_CODE'])
+modem = Compal('192.168.178.1', os.environ['ROUTER_CODE'])
+modem.login()
 
 fw = PortForwards(modem)
 

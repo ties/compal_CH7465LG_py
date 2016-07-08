@@ -215,9 +215,10 @@ LOGGER.setLevel(logging.INFO)
 
 
 class Compal(object):
-    def __init__(self, ip, timeout=10):
+    def __init__(self, ip, key=None, timeout=10):
         self.ip = ip
         self.timeout = timeout
+        self.key = key
 
         self.session = requests.Session()
 
@@ -232,11 +233,18 @@ class Compal(object):
             LOGGER.error("Was not redirected to login page:"
                          " concurrent session?")
 
-    def initial_setup(self, key):
+    def initial_setup(self, newKey=None):
         """
         Replay the settings made during initial setup
         """
         LOGGER.info("Initial setup: english.")
+
+        if newKey:
+            self.key = newKey
+
+        if not self.key:
+            raise ValueError("No key/password availalbe")
+
 
         self.xml_getter(3, {})
         self.xml_getter(21, {})
@@ -246,8 +254,7 @@ class Compal(object):
         # Login or change password? Not sure.
         self.xml_setter(15, OrderedDict([
             ('Username', 'admin'),
-            ('Password', key) 
-
+            ('Password', self.key)
         ]))
         # Get current wifi settings (?)
         self.xml_getter(300, {})
@@ -312,10 +319,13 @@ class Compal(object):
 
         return self.post('/xml/setter.xml', params)
 
-    def login(self, key):
+    def login(self, key=None):
+        """
+        Login. Allow this function to override the key.
+        """
         res = self.xml_setter(15, OrderedDict([
             ('Username', 'admin'),
-            ('Password', key)
+            ('Password', key if key else self.key)
         ]))
 
         assert res.status_code == 200
@@ -616,7 +626,9 @@ class FuncScanner(object):
         return res
 
 # How to use?
-# modem = Compal('192.168.178.1')
+# modem = Compal('192.168.178.1', '1234567')
+# modem.login()
+# Or provide key on login:
 # modem.login('1234567')
 # fw = PortForwards(modem)
 # print(list(fw.rules))
