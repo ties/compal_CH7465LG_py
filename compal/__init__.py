@@ -55,8 +55,7 @@ fun = 300+ => wifi settings
 503: MTA/Docsis errors?
 504: MTA Provisioning?
 
-/setter.xml fun=126:
-    ping
+/setter.xml fun=126: ping
     Type: 0
     Target_IP: <ip>
     Ping_size: 64
@@ -66,8 +65,7 @@ fun = 300+ => wifi settings
 /getter.xml fun=128
 Many posts (only fun/token as params) for results.
 
-/setter.xml fun=127:
-    traceroute
+/setter.xml fun=127: traceroute
     type: 0
     Tracert_IP: "hostname"
     MaxHops: "30"
