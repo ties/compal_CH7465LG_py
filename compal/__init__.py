@@ -190,6 +190,7 @@ wlWpaalg5g:2
   * /setter.xml fun=7
     * Factory reset starts
 """
+import io
 import itertools
 import logging
 import urllib
@@ -197,6 +198,7 @@ import urllib
 
 
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 from collections import OrderedDict
 from enum import Enum
@@ -223,7 +225,7 @@ class Compal(object):
         self.session.hooks['response'].append(self.token_handler)
 
         LOGGER.debug("Getting initial token")
-        self.initial_res = self.get('/')
+        self.initial_res = self.get('/', allow_redirects=False)
 
         if self.initial_res.url.endswith('common_page/FirstInstallation.html'):
             self.initial_setup()
@@ -301,6 +303,14 @@ class Compal(object):
 
         return res
 
+    def post_binary(self, path, binary_data, filename, **kwargs):
+        log.WARNING('post_binary: Untested!')
+        headers = {
+            'Content-Disposition':'form-data; name=\"file\"; filename=\"%s\"' % filename,
+            'Content-Type':'application/octet-stream'
+        }
+        self.session.post(self.url(path), data=binary_data, headers=headers, **kwargs)
+
     def get(self, path, **kwargs):
         res = self.session.get(self.url(path), timeout=self.timeout, **kwargs)
 
@@ -321,6 +331,7 @@ class Compal(object):
         """
         Login. Allow this function to override the key.
         """
+
         res = self.xml_setter(15, OrderedDict([
             ('Username', 'admin'),
             ('Password', key if key else self.key)
@@ -590,6 +601,84 @@ class DHCPSettings(object):
             ('DMZ', ''), ('DMZenable', '')
         ]))
 
+    # Changes Router IP too, according to given range
+    def set_ipv4_dhcp(self, addr_start, addr_end, num_devices, lease_time, enabled):
+        return self.modem.xml_setter(106, OrderedDict([
+            ('action', 1),
+            ('addr_start_s', addr_start), ('addr_end_s', addr_end),
+            ('numberOfCpes_s', num_devices),
+            ('leaseTime_s', lease_time),
+            ('mac_addr', ''),
+            ('reserved_addr', ''),
+            ('_del', ''),
+            ('enable', 1 if enabled else 2)
+        ]))
+
+    def set_ipv6_dhcp(autoconf_type, addr_start, addr_end, num_addrs, vlifetime, ra_lifetime, ra_interval, radvd, dhcpv6):
+        return self.modem.xml_setter(104, OrderedDict([
+            ('v6type', autoconf_type),
+            ('Addr_start', addr_start),
+            ('NumberOfAddrs', num_addrs),
+            ('vliftime', vlifetime),
+            ('ra_lifetime', ra_lifetime),
+            ('ra_interval', ra_interval),
+            ('radvd', radvd),
+            ('dhcpv6', dhcpv6),
+            ('Addr_end', addr_end)
+        ]))
+
+class MiscSettings(object):
+    def __init__(self, modem):
+        self.modem
+
+    def set_mtu(self, mtu_size):
+        return self.modem.xml_setter(135, OrderedDict([
+            ('MTUSize', mtu_size)
+        ]))
+
+    def set_remoteaccess(self, enabled, port=8443):
+        return self.modem.xml_setter(132, OrderedDict([
+            ('RemoteAccess', 1 if enabled else 2),
+            ('Port', port)
+        ]))
+
+class Diagnostics(object):
+    def __init__(self, modem):
+        self.modem = modem
+
+    def test_ping(self, target_addr, ping_size=64, num_ping=3, interval=10):
+        return self.modem.xml_setter(126, OrderedDict([
+            ('Target_IP', target_addr),
+            ('Ping_Size', ping_size),
+            ('Num_Ping', num_ping),
+            ('Ping_Interval', interval)
+        ]))
+
+    def traceroute(self, target_addr, max_hops, data_size, base_port, resolve_host):
+        return self.modem.xml_setter(127, OrderedDict([
+            ('Tracert_IP', target_addr),
+            ('MaxHops', max_hops),
+            ('DataSize', data_size),
+            ('BasePort', base_port),
+            ('ResolveHost', 1 if resolve_host else 0)
+        ]))
+
+class BackupRestore(object):
+    def __init__(self, modem):
+        self.modem = modem
+
+    def backup(self):
+        res = self.modem.xml_getter(2, {})
+        xml = ET.fromstring(res.content)
+        vendor_model = xml.find('ConfigVenderModel').text
+
+        res = self.modem.get("/xml/getter.xml?filename=%s-Cfg.bin" % vendor_model)
+        return res.content
+
+    def restore(self, data, filename):
+        res = self.modem.post_binary("/xml/getter.xml?Restore=%i" % len(data), data, "Config_Restore.bin")
+        return res
+
 class FuncScanner(object):
     def __init__(self, modem, pos, key):
         self.modem = modem
@@ -622,6 +711,17 @@ class FuncScanner(object):
                 raise ValueError("HTTP {}".format(res.status_code))
 
         return res
+
+    def scan_to_file(self):
+        while True:
+            res = self.scan()
+            xmlstr = minidom.parseString(res.content).toprettyxml(indent="   ")
+            with io.open("func_%i.xml" % self.current_pos, "wt") as f:
+                f.write("===== HEADERS =====\n")
+                f.write(str(data.headers))
+                f.write("\n===== DATA ======\n")
+                f.write(xmlstr)
+
 
 # How to use?
 # modem = Compal('192.168.178.1', '1234567')
