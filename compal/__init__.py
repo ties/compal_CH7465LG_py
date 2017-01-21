@@ -457,21 +457,26 @@ class Diagnostics(object):
         self.modem = modem
 
     def test_ping(self, target_addr, ping_size=64, num_ping=3, interval=10):
-        return self.modem.xml_setter(Set.PING_TEST, OrderedDict([
+        res = self.modem.xml_setter(Set.PING_TEST, OrderedDict([
+            ('Type', 1),
             ('Target_IP', target_addr),
             ('Ping_Size', ping_size),
             ('Num_Ping', num_ping),
             ('Ping_Interval', interval)
         ]))
+        return res
 
     def traceroute(self, target_addr, max_hops, data_size, base_port, resolve_host):
-        return self.modem.xml_setter(Set.TRACEROUTE, OrderedDict([
+        res = self.modem.xml_setter(Set.TRACEROUTE, OrderedDict([
+            ('type', 1),
             ('Tracert_IP', target_addr),
             ('MaxHops', max_hops),
             ('DataSize', data_size),
             ('BasePort', base_port),
             ('ResolveHost', 1 if resolve_host else 0)
         ]))
+        return res
+
 
 class BackupRestore(object):
     def __init__(self, modem):
