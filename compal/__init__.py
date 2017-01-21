@@ -195,8 +195,6 @@ import itertools
 import logging
 import urllib
 
-
-
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
@@ -207,6 +205,7 @@ import requests
 
 from recordclass import recordclass
 
+from .functions import Set, Get
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig()
@@ -246,22 +245,22 @@ class Compal(object):
             raise ValueError("No key/password availalbe")
 
 
-        self.xml_getter(3, {})
-        self.xml_getter(21, {})
-        self.xml_getter(3, {})
+        self.xml_getter(Get.MULTILANG, {})
+        self.xml_getter(Get.LANGSETLIST, {})
+        self.xml_getter(Get.MULTILANG, {})
 
-        self.xml_setter(4, {'lang': 'en'})
+        self.xml_setter(Set.LANGUAGE, {'lang': 'en'})
         # Login or change password? Not sure.
-        self.xml_setter(15, OrderedDict([
+        self.xml_setter(Set.LOGIN, OrderedDict([
             ('Username', 'admin'),
             ('Password', self.key)
         ]))
         # Get current wifi settings (?)
-        self.xml_getter(300, {})
+        self.xml_getter(Get.WIRELESSBASIC, {})
 
         # Some sheets with hints, no request
         # installation is done:
-        self.xml_setter(20, {
+        self.xml_setter(Set.INSTALL_DONE, {
             'install': 0,
             'iv': 1,
             'en': 0
@@ -304,7 +303,6 @@ class Compal(object):
         return res
 
     def post_binary(self, path, binary_data, filename, **kwargs):
-        log.WARNING('post_binary: Untested!')
         headers = {
             'Content-Disposition':'form-data; name=\"file\"; filename=\"%s\"' % filename,
             'Content-Type':'application/octet-stream'
@@ -332,7 +330,7 @@ class Compal(object):
         Login. Allow this function to override the key.
         """
 
-        res = self.xml_setter(15, OrderedDict([
+        res = self.xml_setter(Set.LOGIN, OrderedDict([
             ('Username', 'admin'),
             ('Password', key if key else self.key)
         ]))
@@ -340,8 +338,11 @@ class Compal(object):
         assert res.status_code == 200
 
         tokens = urllib.parse.parse_qs(res.text)
-        SID = tokens['SID'][0]
+        SID = tokens.get('SID')
+        if not SID:
+            raise ValueError('No valid session-Id received! Wrong password?')
 
+        SID = SID[0]
         LOGGER.info("[login] SID %s", SID)
 
         self.session.cookies.update({'SID': SID})
@@ -350,23 +351,23 @@ class Compal(object):
 
     def reboot(self):
         try:
-            return self.xml_setter(133, {})
+            return self.xml_setter(Set.REBOOT, {})
         except:
             return None
 
 
     def factory_reset(self):
-        default_settings = self.xml_getter(324, {})
+        default_settings = self.xml_getter(Get.DEFAULTVALUE, {})
 
         try:
-            self.xml_setter(7, {})
+            self.xml_setter(Set.FACTORY_RESET, {})
         except:
             pass
         return default_settings
 
 
     def logout(self):
-        return self.xml_setter(16, {})
+        return self.xml_setter(Set.LOGOUT, {})
 
 
 class Proto(Enum):
@@ -391,7 +392,7 @@ class PortForwards(object):
 
     @property
     def rules(self):
-        res = self.modem.xml_getter(121, {})
+        res = self.modem.xml_getter(Get.FORWARDING, {})
 
         xml = ET.fromstring(res.content)
         router_ip = xml.find('LanIP').text
@@ -417,7 +418,7 @@ class PortForwards(object):
         def b2i(b):  # Bool-2-int
             return 1 if b else 2
 
-        return self.modem.xml_setter(116, OrderedDict([
+        return self.modem.xml_setter(Set.FIREWALL, OrderedDict([
             ('firewallProtection', b2i(enabled)),
             ('blockIpFragments', ''),
             ('portScanDetection', ''),
@@ -442,7 +443,7 @@ class PortForwards(object):
         start_int, end_int = itertools.islice(itertools.repeat(int_port), 0, 2)
         start_ext, end_ext = itertools.islice(itertools.repeat(ext_port), 0, 2)
 
-        return self.modem.xml_setter(122, OrderedDict([
+        return self.modem.xml_setter(Set.PORT_FORWARDING, OrderedDict([
             ('action', 'add'),
             ('instance', ''),
             ('local_IP', local_ip),
@@ -476,7 +477,7 @@ class PortForwards(object):
         LOGGER.info("Updating port forwards")
         LOGGER.debug(params)
 
-        return self.modem.xml_setter(122, params)
+        return self.modem.xml_setter(Set.PORT_FORWARDING, params)
 
 RadioSettings = recordclass('RadioSettings', ['bss_coexistence', 'radio_2g',
     'radio_5g', 'nv_country', 'channel_range'])
@@ -491,7 +492,7 @@ class WifiSettings(object):
 
     @property
     def wifi_settings_xml(self):
-        return ET.fromstring(self.modem.xml_getter(300, {}).content)
+        return ET.fromstring(self.modem.xml_getter(Get.WIRELESSBASIC, {}).content)
 
     @staticmethod
     def band_setting(xml, band):
@@ -580,7 +581,7 @@ class WifiSettings(object):
         # Join the settings
         out_settings = OrderedDict(out_s)
 
-        return self.modem.xml_setter(301, out_settings)
+        return self.modem.xml_setter(Set.WIFI_SETTINGS, out_settings)
 
 
 class DHCPSettings(object):
@@ -588,12 +589,12 @@ class DHCPSettings(object):
         self.modem = modem
 
     def add_static_lease(self, ip, mac):
-        return self.modem.xml_setter(148, {
+        return self.modem.xml_setter(Set.STATIC_DHCP_LEASE, {
             'data': 'ADD,{ip},{mac};'.format(ip=ip, mac=mac)
         })
 
     def set_upnp_status(self, enabled):
-        return self.modem.xml_setter(101, OrderedDict([
+        return self.modem.xml_setter(Set.UPNP_STATUS, OrderedDict([
             ('LanIP', ''),
             ('UPnP', 1 if enabled else 2),
             ('DHCP_addr_s', ''), ('DHCP_addr_e', ''),
@@ -603,7 +604,7 @@ class DHCPSettings(object):
 
     # Changes Router IP too, according to given range
     def set_ipv4_dhcp(self, addr_start, addr_end, num_devices, lease_time, enabled):
-        return self.modem.xml_setter(106, OrderedDict([
+        return self.modem.xml_setter(Set.DHCP_V4, OrderedDict([
             ('action', 1),
             ('addr_start_s', addr_start), ('addr_end_s', addr_end),
             ('numberOfCpes_s', num_devices),
@@ -614,8 +615,9 @@ class DHCPSettings(object):
             ('enable', 1 if enabled else 2)
         ]))
 
-    def set_ipv6_dhcp(autoconf_type, addr_start, addr_end, num_addrs, vlifetime, ra_lifetime, ra_interval, radvd, dhcpv6):
-        return self.modem.xml_setter(104, OrderedDict([
+    def set_ipv6_dhcp(autoconf_type, addr_start, addr_end, num_addrs,
+                        vlifetime, ra_lifetime, ra_interval, radvd, dhcpv6):
+        return self.modem.xml_setter(Set.DHCP_V6, OrderedDict([
             ('v6type', autoconf_type),
             ('Addr_start', addr_start),
             ('NumberOfAddrs', num_addrs),
@@ -632,12 +634,12 @@ class MiscSettings(object):
         self.modem
 
     def set_mtu(self, mtu_size):
-        return self.modem.xml_setter(135, OrderedDict([
+        return self.modem.xml_setter(Set.MTU_SIZE, OrderedDict([
             ('MTUSize', mtu_size)
         ]))
 
     def set_remoteaccess(self, enabled, port=8443):
-        return self.modem.xml_setter(132, OrderedDict([
+        return self.modem.xml_setter(Set.REMOTE_ACCESS, OrderedDict([
             ('RemoteAccess', 1 if enabled else 2),
             ('Port', port)
         ]))
@@ -647,7 +649,7 @@ class Diagnostics(object):
         self.modem = modem
 
     def test_ping(self, target_addr, ping_size=64, num_ping=3, interval=10):
-        return self.modem.xml_setter(126, OrderedDict([
+        return self.modem.xml_setter(Set.PING_TEST, OrderedDict([
             ('Target_IP', target_addr),
             ('Ping_Size', ping_size),
             ('Num_Ping', num_ping),
@@ -655,7 +657,7 @@ class Diagnostics(object):
         ]))
 
     def traceroute(self, target_addr, max_hops, data_size, base_port, resolve_host):
-        return self.modem.xml_setter(127, OrderedDict([
+        return self.modem.xml_setter(Set.TRACEROUTE, OrderedDict([
             ('Tracert_IP', target_addr),
             ('MaxHops', max_hops),
             ('DataSize', data_size),
@@ -668,15 +670,23 @@ class BackupRestore(object):
         self.modem = modem
 
     def backup(self):
-        res = self.modem.xml_getter(2, {})
+        res = self.modem.xml_getter(Get.GLOBALSETTINGS, {})
         xml = ET.fromstring(res.content)
         vendor_model = xml.find('ConfigVenderModel').text
 
-        res = self.modem.get("/xml/getter.xml?filename=%s-Cfg.bin" % vendor_model)
+        res = self.modem.get("/xml/getter.xml?filename=%s-Cfg.bin" % 
+                                vendor_model, allow_redirects=False)
+        if res.status_code != 200:
+            LOGGER.error("Did not get configfile response!"
+                        " Wrong config file name?")
+            return None
+
         return res.content
 
-    def restore(self, data, filename):
-        res = self.modem.post_binary("/xml/getter.xml?Restore=%i" % len(data), data, "Config_Restore.bin")
+    def restore(self, data):
+        LOGGER.info("Restoring config. Modem will be unresponsive for a while!")
+        res = self.modem.post_binary("/xml/getter.xml?Restore=%i" %
+                                        len(data), data, "Config_Restore.bin")
         return res
 
 class FuncScanner(object):
@@ -688,21 +698,23 @@ class FuncScanner(object):
 
     @property
     def is_valid_session(self):
-        LOGGER.info("Last login %d", self.last_login)
-        res = self.modem.xml_getter(2, {})
+        LOGGER.debug("Last login %d", self.last_login)
+        res = self.modem.xml_getter(Get.CM_SYSTEM_INFO, {})
         return res.status_code == 200
 
-    def scan(self):
+    def scan(self, quiet=False):
         res = None
         while not res or res.text is '':
-            LOGGER.info("func=%s", self.current_pos)
+            if not quiet:
+                LOGGER.info("func=%s", self.current_pos)
 
             res = self.modem.xml_getter(self.current_pos, {})
             if res.text == '':
                 if not self.is_valid_session:
                     self.last_login = self.current_pos
                     self.modem.login(self.key)
-                    LOGGER.info("Had to login at index %d", self.current_pos)
+                    if not quiet:
+                        LOGGER.info("Had to login at index %d", self.current_pos)
                     continue
 
             if res.status_code == 200:
@@ -716,12 +728,17 @@ class FuncScanner(object):
         while True:
             res = self.scan()
             xmlstr = minidom.parseString(res.content).toprettyxml(indent="   ")
-            with io.open("func_%i.xml" % self.current_pos, "wt") as f:
+            with io.open("func_%i.xml" % (self.current_pos - 1), "wt") as f:
                 f.write("===== HEADERS =====\n")
-                f.write(str(data.headers))
+                f.write(str(res.headers))
                 f.write("\n===== DATA ======\n")
                 f.write(xmlstr)
 
+    def enumerate(self):
+        while True:
+            res = self.scan(quiet=True)
+            xml = minidom.parseString(res.content)
+            LOGGER.info("%s = %i" % (xml.documentElement.tagName.upper(), self.current_pos - 1))
 
 # How to use?
 # modem = Compal('192.168.178.1', '1234567')
