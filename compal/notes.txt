@@ -1,0 +1,190 @@
+POST /xml/getter.xml HTTP/1.1
+Host: 192.168.178.1
+Connection: keep-alive
+Content-Length: 7
+Accept: application/xml, text/xml, */*; q=0.01
+Origin: http://192.168.178.1
+X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2566.0 Safari/537.36
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+DNT: 1
+Referer: http://192.168.178.1/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US,en;q=0.8,nl;q=0.6
+Cookie: SID=1519658240
+
+fun=121
+
+
+fun=3 ==> login page
+fun=16 ==> logout
+
+UPNP/DHCP settings
+/setter.xml, fun=101
+    LanIP:
+    UPnP:2
+    DHCP_addr_s:
+    DHCP_addr_e:
+    subnet_Mask:
+    DMZ:
+    DMZenable:
+2 => disabled.
+
+Firewall settings:
+/setter.xml, fun=116
+    firewallProtection:2
+    blockIpFragments:2
+    portScanDetection:2
+    synFloodDetection:2
+    IcmpFloodDetection:2
+    IcmpFloodDetectRate:15
+    action:
+    IPv6firewallProtection:
+    IPv6blockIpFragments:
+    IPv6portScanDetection:
+    IPv6synFloodDetection:
+    IPv6IcmpFloodDetection:
+    IPv6IcmpFloodDetectRate:
+=> disabled=2
+
+
+fun = 300+ => wifi settings
+  324: default wifi pwd
+
+503: MTA/Docsis errors?
+504: MTA Provisioning?
+
+/setter.xml fun=126: ping
+    Type: 0
+    Target_IP: <ip>
+    Ping_size: 64
+    Num_Ping: 3
+    Ping_Interval: 1
+=>
+/getter.xml fun=128
+Many posts (only fun/token as params) for results.
+
+/setter.xml fun=127: traceroute
+    type: 0
+    Tracert_IP: "hostname"
+    MaxHops: "30"
+    DatSize: "32"
+    BasePort: "33424"
+    ResolveHost: "0"
+=>
+/getter.xml fun=129
+Many posts (only fun/token as params) for results.
+
+Port forward:
+/setter.xml fun=122
+    action:add
+    instance:
+    local_IP:192.168.178.17
+    start_port:443
+    end_port:443
+    start_portIn:443
+    end_portIn:443
+    protocol:1
+    enable:1
+    delete:0
+    idd:
+
+Disable/Enable port forward:
+/setter.xml fun=122
+    action:apply
+    instance:1*2*3
+    local_IP:
+    start_port:
+    end_port:
+    start_portIn:**
+    end_portIn:
+    protocol:1*1*1
+    enable:1*1*1
+    delete:0*0*0
+    idd:**
+
+/getter.xml fun=121
+  Firewall rules (XML)
+
+Get IP leases
+/getter.xml, fun=123
+  method: 2 => static lease
+
+Static DHCP leases:
+/setter.xml fun=148
+  token:1246383104
+  fun:148
+  data:ADD,<ip>,<mac>;
+
+/getter.xml fun=300
+  Wifi settings
+
+/setter.xml fun=301
+  Change wifi settings
+
+  fun:301
+wlBandMode2g:1
+wlBandMode5g:1
+wlSsid2g:ssid24
+wlSsid5g:ssid5g
+wlBandwidth2g:2
+wlBandwidth5g:3
+wlTxMode2g:6
+wlTxMode5g:14
+wlMCastRate2g:1
+wlMCastRate5g:1
+wlHiden2g:2
+wlHiden5g:2
+wlCoexistence:1
+wlPSkey2g: keykeykey
+wlPSkey5g: key5gkey5g
+wlTxrate2g:0
+wlTxrate5g:0
+wlRekey2g:0
+wlRekey5g:0
+wlChannel2g:13
+wlChannel5g:0
+wlSecurity2g:8
+wlSecurity5g:8
+wlWpaalg2g:3
+wlWpaalg5g:3
+
+/setter.xml fun=319
+  Wifi enable/disable radio's
+
+Similar to 301 except for bandmode (single value)
+
+fun:319
+wlBandMode:4
+wlSsid2g:ssid24
+wlSsid5g:ssid5g
+wlBandwidth2g:1
+wlBandwidth5g:3
+wlTxMode2g:6
+wlTxMode5g:14
+wlMCastRate2g:1
+wlMCastRate5g:1
+wlHiden2g:2
+wlHiden5g:2
+wlCoexistence:1
+wlPSkey2g:keykeykey
+wlPSkey5g:key5gkey5g
+wlTxrate2g:0
+wlTxrate5g:0
+wlRekey2g:0
+wlRekey5g:0
+wlChannel2g:0
+wlChannel5g:0
+wlSecurity2g:4
+wlSecurity5g:4
+wlWpaalg2g:2
+wlWpaalg5g:2
+
+/setter.xml fun=133
+ -> modem reboot
+
+## Factory reset:
+  * /getter.xml fun=324
+    * Response that contains the default ssid and password
+  * /setter.xml fun=7
+    * Factory reset starts
