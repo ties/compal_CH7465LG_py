@@ -3,8 +3,8 @@ import itertools
 import logging
 import urllib
 
-import xml.etree.ElementTree as ET
 from xml.dom import minidom
+from lxml import etree
 
 from collections import OrderedDict
 from enum import Enum
@@ -200,13 +200,18 @@ PortForward.__new__.__defaults__ = (False, None, None, None,)
 
 class PortForwards(object):
     def __init__(self, modem):
+        # The modem sometimes returns invalid XML when 'strange' values are
+        # present in the settings. The recovering parser from lxml is used to
+        # handle this.
+        self.parser = etree.XMLParser(recover=True)
+
         self.modem = modem
 
     @property
     def rules(self):
         res = self.modem.xml_getter(Get.FORWARDING, {})
 
-        xml = ET.fromstring(res.content)
+        xml = etree.fromstring(res.content, parser=self.parser)
         router_ip = xml.find('LanIP').text
 
         for rule in xml.findall('instance'):
@@ -300,11 +305,17 @@ BandSetting = recordclass('BandSetting', ['mode', 'ssid', 'bss_enable', 'radio',
 
 class WifiSettings(object):
     def __init__(self, modem):
+        # The modem sometimes returns invalid XML when 'strange' values are
+        # present in the settings. The recovering parser from lxml is used to
+        # handle this.
+        self.parser = etree.XMLParser(recover=True)
+
         self.modem = modem
 
     @property
     def wifi_settings_xml(self):
-        return ET.fromstring(self.modem.xml_getter(Get.WIRELESSBASIC, {}).content)
+        xml_content = self.modem.xml_getter(Get.WIRELESSBASIC, {}).content
+        return etree.fromstring(xml_content, parser=self.parser)
 
     @staticmethod
     def band_setting(xml, band):
@@ -317,7 +328,7 @@ class WifiSettings(object):
                 if not coherce:
                     return val
                 return int(val)
-            except ValueError:
+            except (TypeError, ValueError):
                 return val
 
         def band_xv(attr, coherce=True):
