@@ -8,6 +8,11 @@ At the moment it *only* contains the functionality that I needed while I was inv
 device, but pull requests that improve the documentation or add features are welcome.
 
 How to use it?
+--------------
+The `examples` directory contains some example scripts. My main use case is re-provisioning the
+modem. An example script for this task is included.
+
+Want to get started really quickly?
 ```python
 import os
 import time

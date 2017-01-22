@@ -1,4 +1,12 @@
+"""
+Constants that define the functions of the modem
+"""
+
+
 class Set(object):
+    """
+    Constants for the setters the modem in the modem's internal API
+    """
     LANGUAGE = 4
     FACTORY_RESET = 7
     LOGIN = 15
@@ -19,6 +27,10 @@ class Set(object):
 
 
 class Get(object):
+    """
+    Constants for the getters in the modem's internal API
+    """
+
     GLOBALSETTINGS = 1
     CM_SYSTEM_INFO = 2
     MULTILANG = 3

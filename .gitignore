@@ -1,2 +1,4 @@
 *.pyc
 .python-version
+.tox
+compal.egg-info/**/*

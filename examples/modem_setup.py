@@ -4,15 +4,16 @@ wrapper](https://github.com/ties/compal_CH7465LG_py).
 """
 import argparse
 import time
+import sys
+import os
 
-from compal import Compal, WifiSettings, DHCPSettings, PortForwards, Proto
+# Push the parent directory onto PYTHONPATH before compal module is imported
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-CB_PASSWD = '60451811'
-CB_HOST = '192.168.178.1'
-PW = 'distends_shout_adding_bandies_bleating'
+from compal import Compal, WifiSettings, DHCPSettings, PortForwards, Proto  # noqa
 
 
-def modem_setup(host, passwd, factory_reset=False):
+def modem_setup(host, passwd, wifi_passwd, factory_reset=False):
     print("Attempting connection to %s with password: %s" % (host, passwd))
     try:
         modem = Compal(host, passwd)
@@ -37,31 +38,34 @@ def modem_setup(host, passwd, factory_reset=False):
     wifi = WifiSettings(modem)
     settings = wifi.wifi_settings
 
-    settings.radio_2g.ssid = '00-CB'
-    settings.radio_2g.mode = False
-    # 20/40MHz
-    settings.radio_2g.bandwidth = 2
-    settings.radio_5g.ssid = '00-CB-5G'
-    settings.radio_5g.mode = False
+    if wifi_passwd:
+        settings.radio_2g.ssid = 'modem_setup-2.4'
+        settings.radio_2g.mode = False
+        settings.radio_2g.security = 8
+        # 20/40MHz
+        settings.radio_2g.bandwidth = 2
+        settings.radio_5g.ssid = 'modem_setup-5'
+        settings.radio_5g.mode = False
+        settings.radio_5g.security = 8
 
-    settings.radio_2g.pre_shared_key = PW
-    settings.radio_5g.pre_shared_key = PW
+        settings.radio_2g.pre_shared_key = wifi_passwd
+        settings.radio_5g.pre_shared_key = wifi_passwd
 
-    wifi.update_wifi_settings(settings)
+        wifi.update_wifi_settings(settings)
 
     dhcp = DHCPSettings(modem)
-    dhcp.add_static_lease('192.168.178.15', 'BC:5F:F4:FE:05:15')
     dhcp.add_static_lease('192.168.178.17', 'd0:50:99:0a:65:52')
+    dhcp.add_static_lease('192.168.178.16', 'BC:5F:F4:FE:05:15')
     dhcp.set_upnp_status(False)
 
     fw = PortForwards(modem)
     # Disable the firewall
-    fw.update_firewall(enabled=False)
+    fw.update_firewall(enabled=True)
 
     # Delete all old rules
     rules = list(fw.rules)
     for rule in rules:
-        rule.delete=True
+        rule.delete = True
 
     fw.update_rules(rules)
 
@@ -69,16 +73,22 @@ def modem_setup(host, passwd, factory_reset=False):
     fw.add_forward('192.168.178.17', 80, 80, Proto.tcp)
     fw.add_forward('192.168.178.17', 1022, 22, Proto.tcp)
     fw.add_forward('192.168.178.17', 443, 443, Proto.tcp)
-    # fw.add_forward('192.168.178.17', 51413, 51413, Proto.both)
+    fw.add_forward('192.168.178.17', 32400, 32400, Proto.tcp)
 
     modem.logout()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Connect Box configuration')
     parser.add_argument('--factory_reset', action='store_true', default=False)
-    parser.add_argument('--host', type=str, default=CB_HOST)
-    parser.add_argument('--password', type=str, default=CB_PASSWD)
+    parser.add_argument('--host', type=str,
+                        default=os.environ.get('CB_HOST', None))
+    parser.add_argument('--password', type=str,
+                        default=os.environ.get('CB_PASSWD', None))
+
+    parser.add_argument('--wifi_pw', type=str,
+                        default=os.environ.get('CB_WIFI_PASSWD', None))
 
     args = parser.parse_args()
 
-    modem_setup(args.host, args.password, args.factory_reset) 
+    modem_setup(args.host, args.password, args.wifi_pw, args.factory_reset)
