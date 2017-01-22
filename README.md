@@ -7,6 +7,11 @@ Compal CH7465LG). It is implemented in **Python > 3.4**.
 At the moment it *only* contains the functionality that I needed while I was investigating my
 device, but pull requests that improve the documentation or add features are welcome.
 
+Security
+--------
+A security evaluation of the Connect Box was [posted](https://packetstormsecurity.com/files/137996/compalch7465lglc-bypassexec.txt)
+on-line. This report is included in the `docs` folder.
+
 How to use it?
 --------------
 The `examples` directory contains some example scripts. My main use case is re-provisioning the
