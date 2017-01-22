@@ -13,8 +13,13 @@ PW = 'distends_shout_adding_bandies_bleating'
 
 
 def modem_setup(host, passwd, factory_reset=False):
-    modem = Compal(host, passwd)
-    modem.login()
+    print("Attempting connection to %s with password: %s" % (host, passwd))
+    try:
+        modem = Compal(host, passwd)
+        modem.login()
+    except Exception as err:
+        print("Login to modem failed! Error: %s" % err)
+        return
 
     if factory_reset:
         # Factory reset
