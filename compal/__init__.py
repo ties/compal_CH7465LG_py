@@ -143,7 +143,11 @@ class Compal(object):
             ('Password', key if key else self.key)
         ]))
 
-        assert res.status_code == 200
+        if res.status_code != 200:
+            if res.headers['Location'].endswith('common_page/Access-denied.html'):
+                raise ValueError('Access denied. Still logged in somewhere else?')
+            else:
+                raise ValueError('Login failed for unknown reason!')
 
         tokens = urllib.parse.parse_qs(res.text)
         SID = tokens.get('SID')
