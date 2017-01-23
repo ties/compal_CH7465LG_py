@@ -138,8 +138,10 @@ class Compal(object):
         """
         Perform a post request with a file as form-data in it's body.
         """
+
         headers = {
-            'Content-Disposition': 'form-data; name=\"file\"; filename=\"%s\"' % filename,  # noqa
+            'Content-Disposition':
+                'form-data; name="file"; filename="%s"' % filename,  # noqa
             'Content-Type': 'application/octet-stream'
         }
         self.session.post(self.url(path), data=binary_data, headers=headers,
@@ -235,6 +237,9 @@ class Compal(object):
         return self.xml_setter(Set.LOGOUT, {})
 
     def change_password(self, old_password, new_password):
+        """
+        Change the admin password
+        """
         return self.xml_setter(Set.CHANGE_PASSWORD, OrderedDict([
             ('oldpassword', old_password),
             ('newpassword', new_password)
@@ -333,8 +338,8 @@ class PortForwards(object):
     def add_forward(self, local_ip, ext_port, int_port, proto: Proto,
                     enabled=True):
         """
-        Add a port forward. int_port and ext_port can be ranges. Deletion param
-        is ignored for now.
+        Add a port forward. int_port and ext_port can be ranges. Deletion
+        param is ignored for now.
         """
         start_int, end_int = itertools.islice(itertools.repeat(int_port), 0, 2)
         start_ext, end_ext = itertools.islice(itertools.repeat(ext_port), 0, 2)
@@ -380,24 +385,41 @@ class PortForwards(object):
 
 
 class FilterAction(Enum):
+    """
+    Filter action, used by internet access filters
+    """
     add = 1
     delete = 2
     enable = 3
 
 
 class TimerMode(Enum):
+    """
+    Timermodes used for internet access filtering
+    """
     generaltime = 1
-    dialytime = 2
+    dailytime = 2
 
 
 class Filters(object):
+    """
+    Provide filters for accessing the internet.
+
+    Supports access-restriction via parental control (Keywords, url-lists,
+    timetable), client's MAC address and by specific ports.
+    """
+
     def __init__(self, modem):
         self.modem = modem
 
-    def set_parental_control(self, safe_search, keyword_list, allow_list, deny_list, timer_mode, enable):
-
-        data =  "EN=%s;" % ("1" if enable else "2")
-        data += "SAFE=%s;" % ("1" if enable else "2")
+    def set_parental_control(self, safe_search, keyword_list, allow_list,
+                             deny_list, timer_mode, enable):
+        """
+        Filter internet access by keywords or block/allow whole urls
+        Allowed times can be set too
+        """
+        data = "EN=%s;" % ("1" if enable else "2")
+        data += "SAFE=%s;" % ("1" if safe_search else "2")
 
         data += "KEY=%s;" % ("1" if len(keyword_list) else "0")
         data += "KEYLIST="
@@ -432,7 +454,11 @@ class Filters(object):
 
         self.modem.xml_setter(Set.PARENTAL_CONTROL, {'data': data})
 
-    def set_mac_filter(self, action, device_name, mac_addr, timer_mode, enable):
+    def set_mac_filter(self, action, device_name, mac_addr, timer_mode,
+                       enable):
+        """
+        Restrict access to the internet via client MAC address
+        """
         if FilterAction.add == action:
             data = "ADD,"
         elif FilterAction.delete == action:
@@ -454,7 +480,7 @@ class Filters(object):
         else:
             timerule = "0"
 
-        data += "MODE=%i," % time_mode.value
+        data += "MODE=%i," % timer_mode.value
         data += "TIME=%s;" % timerule
 
         return self.modem.xml_setter(Set.MACFILTER, {'data': data})
@@ -474,13 +500,13 @@ class Filters(object):
             ('dst_addr', ''),
             ('dst_prefix', ''),
             ('ssport', ''),
-			('seport', ''),
+            ('seport', ''),
             ('dsport', ''),
             ('deport', ''),
             ('del', ''),
             ('idd', ''),
             ('sIpRange', ''),
-			('dsIpRange', ''),
+            ('dsIpRange', ''),
             ('PortRange', ''),
             ('TMode', ''),
             ('TRule', '')
@@ -733,7 +759,6 @@ class MiscSettings(object):
             'MTUSize': mtu_size
         })
 
-
     def set_remoteaccess(self, enabled, port=8443):
         """
         Ensure that remote access is enabled/disabled on the given port
@@ -744,6 +769,9 @@ class MiscSettings(object):
         ]))
 
     def set_forgot_pw_email(self, email_addr):
+        """
+        Set email address for Forgot Password function
+        """
         return self.modem.xml_setter(Set.SET_EMAIL, OrderedDict([
             ('email', email_addr),
             ('emailLen', len(email_addr)),
@@ -751,6 +779,9 @@ class MiscSettings(object):
         ]))
 
     def send_forgot_pw_email(self, email_addr):
+        """
+        Send an email to receive new or forgotten password
+        """
         return self.modem.xml_setter(Set.SEND_EMAIL, OrderedDict([
             ('email', email_addr),
             ('emailLen', len(email_addr)),
@@ -759,6 +790,9 @@ class MiscSettings(object):
 
 
 class DiagToolName(Enum):
+    """
+    Enumeration of diagnostic tool names
+    """
     ping = "ping"
     traceroute = "traceroute"
 
@@ -770,7 +804,8 @@ class Diagnostics(object):
     def __init__(self, modem):
         self.modem = modem
 
-    def start_pingtest(self, target_addr, ping_size=64, num_ping=3, interval=10):
+    def start_pingtest(self, target_addr, ping_size=64, num_ping=3,
+                       interval=10):
         """
         Start Ping-Test
         """
@@ -797,7 +832,7 @@ class Diagnostics(object):
         return self.modem.xml_getter(Get.PING_RESULT, {})
 
     def start_traceroute(self, target_addr, max_hops, data_size, base_port,
-                        resolve_host):
+                         resolve_host):
         """
         Start Traceroute
         """
@@ -824,6 +859,7 @@ class Diagnostics(object):
         """
         return self.modem.xml_getter(Get.TRACEROUTE_RESULT, {})
 
+
 class BackupRestore(object):
     """
     Configuration backup and restore
@@ -841,7 +877,7 @@ class BackupRestore(object):
         Backup the configuration and return it's content
         """
         res = self.modem.xml_getter(Get.GLOBALSETTINGS, {})
-        xml = ET.fromstring(res.content)
+        xml = etree.fromstring(res.content, parser=self.parser)
 
         if not filename:
             fname = xml.find('ConfigVenderModel').text + "-Cfg.bin"
@@ -849,7 +885,7 @@ class BackupRestore(object):
             fname = filename
 
         res = self.modem.get("/xml/getter.xml", params={'filename': fname},
-                                allow_redirects=False)
+                             allow_redirects=False)
         if res.status_code != 200:
             LOGGER.error("Did not get configfile response!"
                          " Wrong config file name?")
@@ -861,10 +897,10 @@ class BackupRestore(object):
         """
         Restore the configuration from the binary string in `data`
         """
-        LOGGER.info("Restoring config. Modem will be unresponsive for a while")
-        res = self.modem.post_binary("/xml/getter.xml", data, "Config_Restore.bin",
-                                    params={'Restore': len(data)})
-        return res
+        LOGGER.info("Restoring config. Modem will reboot after that")
+        return self.modem.post_binary("/xml/getter.xml",
+                                      data, "Cfg_Restore.bin",
+                                      params={'Restore': len(data)})
 
 
 class FuncScanner(object):
