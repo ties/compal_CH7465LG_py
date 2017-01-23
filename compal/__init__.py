@@ -234,6 +234,12 @@ class Compal(object):
         """
         return self.xml_setter(Set.LOGOUT, {})
 
+    def change_password(self, old_password, new_password):
+        return self.xml_setter(Set.CHANGE_PASSWORD, OrderedDict([
+            ('oldpassword', old_password),
+            ('newpassword', new_password)
+        ]))
+
 
 class Proto(Enum):
     """
@@ -371,6 +377,141 @@ class PortForwards(object):
         LOGGER.debug(params)
 
         return self.modem.xml_setter(Set.PORT_FORWARDING, params)
+
+
+class FilterAction(Enum):
+    add = 1
+    delete = 2
+    enable = 3
+
+
+class TimerMode(Enum):
+    generaltime = 1
+    dialytime = 2
+
+
+class Filters(object):
+    def __init__(self, modem):
+        self.modem = modem
+
+    def set_parental_control(self, safe_search, keyword_list, allow_list, deny_list, timer_mode, enable):
+
+        data =  "EN=%s;" % ("1" if enable else "2")
+        data += "SAFE=%s;" % ("1" if enable else "2")
+
+        data += "KEY=%s;" % ("1" if len(keyword_list) else "0")
+        data += "KEYLIST="
+        if len(keyword_list):
+            data += ",".join(keyword_list) + ";"
+        else:
+            data += "empty" + ";"
+
+        data += "ALLOW=%s;" % ("1" if len(allow_list) else "0")
+        data += "ALLOWLIST="
+        if len(keyword_list):
+            data += ",".join(keyword_list) + ";"
+        else:
+            data += "empty" + ";"
+
+        data += "DENY=%s;" % ("1" if len(deny_list) else "0")
+        data += "DENYLIST="
+        if len(keyword_list):
+            data += ",".join(keyword_list) + ";"
+        else:
+            data += "empty" + ";"
+
+        if TimerMode.generaltime == timer_mode:
+            timer_rule = "0,0"
+        elif TimerMode.dailytime == timer_mode:
+            timer_rule = "0,0"
+        else:
+            timer_rule = "empty"
+
+        data += "TMODE=%i;" % timer_mode.value
+        data += "TIMERULE=%s;" % timer_rule
+
+        self.modem.xml_setter(Set.PARENTAL_CONTROL, {'data': data})
+
+    def set_mac_filter(self, action, device_name, mac_addr, timer_mode, enable):
+        if FilterAction.add == action:
+            data = "ADD,"
+        elif FilterAction.delete == action:
+            data = "DEL,"
+        elif FilterAction.enable == action:
+            data = "EN,"
+        else:
+            LOGGER.error("No action supplied for MAC filter rule")
+            return
+
+        data += device_name + ","
+        data += mac_addr + ","
+        data += "%i" % (1 if enable else 2) + ";"
+
+        if TimerMode.generaltime == timer_mode:
+            timerule = "0,0"
+        elif TimerMode.dailytime == timer_mode:
+            timerule = "0,0"
+        else:
+            timerule = "0"
+
+        data += "MODE=%i," % time_mode.value
+        data += "TIME=%s;" % timerule
+
+        return self.modem.xml_setter(Set.MACFILTER, {'data': data})
+
+    def set_ipv6_filter_rule(self):
+        """
+        To be integrated...
+        """
+        params = OrderedDict([
+            ('act', ''),
+            ('dir', ''),
+            ('enabled', ''),
+            ('allow_traffic', ''),
+            ('protocol', ''),
+            ('src_addr', ''),
+            ('src_prefix', ''),
+            ('dst_addr', ''),
+            ('dst_prefix', ''),
+            ('ssport', ''),
+			('seport', ''),
+            ('dsport', ''),
+            ('deport', ''),
+            ('del', ''),
+            ('idd', ''),
+            ('sIpRange', ''),
+			('dsIpRange', ''),
+            ('PortRange', ''),
+            ('TMode', ''),
+            ('TRule', '')
+        ])
+        return self.modem.xml_setter(Set.IPV6_FILTER_RULE, params)
+
+    def set_filter_rule(self):
+        """
+        To be integrated...
+        """
+        params = OrderedDict([
+            ('act', ''),
+            ('enabled', ''),
+            ('protocol', ''),
+            ('src_addr_s', ''),
+            ('src_addr_e', ''),
+            ('dst_addr_s', ''),
+            ('dst_addr_e', ''),
+            ('ssport', ''),
+            ('seport', ''),
+            ('dsport', ''),
+            ('deport', ''),
+            ('del', ''),
+            ('idd', ''),
+            ('sIpRange', ''),
+            ('dsIpRange', ''),
+            ('PortRange', ''),
+            ('TMode', ''),
+            ('TRule', '')
+        ])
+        return self.modem.xml_setter(Set.FILTER_RULE, params)
 
 
 RadioSettings = recordclass('RadioSettings', [  # pylint: disable=invalid-name
@@ -588,9 +729,10 @@ class MiscSettings(object):
         """
         Sets the MTU
         """
-        return self.modem.xml_setter(Set.MTU_SIZE, OrderedDict([
-            ('MTUSize', mtu_size)
-        ]))
+        return self.modem.xml_setter(Set.MTU_SIZE, {
+            'MTUSize': mtu_size
+        })
+
 
     def set_remoteaccess(self, enabled, port=8443):
         """
@@ -601,6 +743,25 @@ class MiscSettings(object):
             ('Port', port)
         ]))
 
+    def set_forgot_pw_email(self, email_addr):
+        return self.modem.xml_setter(Set.SET_EMAIL, OrderedDict([
+            ('email', email_addr),
+            ('emailLen', len(email_addr)),
+            ('opt', 0)
+        ]))
+
+    def send_forgot_pw_email(self, email_addr):
+        return self.modem.xml_setter(Set.SEND_EMAIL, OrderedDict([
+            ('email', email_addr),
+            ('emailLen', len(email_addr)),
+            ('opt', 0)
+        ]))
+
+
+class DiagToolName(Enum):
+    ping = "ping"
+    traceroute = "traceroute"
+
 
 class Diagnostics(object):
     """
@@ -609,25 +770,38 @@ class Diagnostics(object):
     def __init__(self, modem):
         self.modem = modem
 
-    def test_ping(self, target_addr, ping_size=64, num_ping=3, interval=10):
+    def start_pingtest(self, target_addr, ping_size=64, num_ping=3, interval=10):
         """
-        Ping
+        Start Ping-Test
         """
-        res = self.modem.xml_setter(Set.PING_TEST, OrderedDict([
+        return self.modem.xml_setter(Set.PING_TEST, OrderedDict([
             ('Type', 1),
             ('Target_IP', target_addr),
             ('Ping_Size', ping_size),
             ('Num_Ping', num_ping),
             ('Ping_Interval', interval)
         ]))
-        return res
 
-    def traceroute(self, target_addr, max_hops, data_size, base_port,
-                   resolve_host):
+    def stop_pingtest(self):
         """
-        Traceroute
+        Stop Ping-Test
         """
-        res = self.modem.xml_setter(Set.TRACEROUTE, OrderedDict([
+        return self.modem.xml_setter(Set.STOP_DIAGNOSTIC, {
+            'Ping': DiagToolName.ping
+        })
+
+    def get_pingtest_result(self):
+        """
+        Get Ping-Test results
+        """
+        return self.modem.xml_getter(Get.PING_RESULT, {})
+
+    def start_traceroute(self, target_addr, max_hops, data_size, base_port,
+                        resolve_host):
+        """
+        Start Traceroute
+        """
+        return self.modem.xml_setter(Set.TRACEROUTE, OrderedDict([
             ('type', 1),
             ('Tracert_IP', target_addr),
             ('MaxHops', max_hops),
@@ -635,8 +809,20 @@ class Diagnostics(object):
             ('BasePort', base_port),
             ('ResolveHost', 1 if resolve_host else 0)
         ]))
-        return res
 
+    def stop_traceroute(self):
+        """
+        Stop Traceroute
+        """
+        return self.modem.xml_setter(Set.STOP_DIAGNOSTIC, {
+            'Traceroute': DiagToolName.traceroute
+        })
+
+    def get_traceroute_result(self):
+        """
+        Get Traceroute results
+        """
+        return self.modem.xml_getter(Get.TRACEROUTE_RESULT, {})
 
 class BackupRestore(object):
     """
@@ -650,17 +836,20 @@ class BackupRestore(object):
 
         self.modem = modem
 
-    def backup(self):
+    def backup(self, filename=None):
         """
         Backup the configuration and return it's content
         """
         res = self.modem.xml_getter(Get.GLOBALSETTINGS, {})
-        xml = etree.fromstring(res.content, parser=self.parser)
-        vendor_model = xml.find('ConfigVenderModel').text
+        xml = ET.fromstring(res.content)
 
-        res = self.modem.get("/xml/getter.xml?filename={}-Cfg.bin".format(
-            vendor_model), allow_redirects=False)
+        if not filename:
+            fname = xml.find('ConfigVenderModel').text + "-Cfg.bin"
+        else:
+            fname = filename
 
+        res = self.modem.get("/xml/getter.xml", params={'filename': fname},
+                                allow_redirects=False)
         if res.status_code != 200:
             LOGGER.error("Did not get configfile response!"
                          " Wrong config file name?")
@@ -673,8 +862,8 @@ class BackupRestore(object):
         Restore the configuration from the binary string in `data`
         """
         LOGGER.info("Restoring config. Modem will be unresponsive for a while")
-        res = self.modem.post_binary("/xml/getter.xml?Restore=%i" % len(data),
-                                     data, "Config_Restore.bin")
+        res = self.modem.post_binary("/xml/getter.xml", data, "Config_Restore.bin",
+                                    params={'Restore': len(data)})
         return res
 
 
