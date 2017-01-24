@@ -1,6 +1,7 @@
 """
 Client for the Compal CH7465LG/Ziggo Connect box cable modem
 """
+import html
 import io
 import itertools
 import logging
@@ -8,7 +9,7 @@ import urllib
 
 from xml.dom import minidom
 from enum import Enum
-from collections import OrderedDict
+from collections import OrderedDict, Sequence
 from lxml import etree
 
 # recordclass is a mutable variation on `collections.NamedTuple
@@ -614,7 +615,7 @@ class Diagnostics(object):
         Ping
         """
         res = self.modem.xml_setter(Set.PING_TEST, OrderedDict([
-            ('Type', 1),
+            ('Type', 0),
             ('Target_IP', target_addr),
             ('Ping_Size', ping_size),
             ('Num_Ping', num_ping),
@@ -636,6 +637,32 @@ class Diagnostics(object):
             ('ResolveHost', 1 if resolve_host else 0)
         ]))
         return res
+
+    def ping_response(self):
+        """ test_ping result """
+        res = self.modem.xml_getter(Get.PING_RESULT, {}).text
+        return html.unescape(res)
+
+    def traceroute_response(self):
+        """ test_traceroute result """
+        res = self.modem.xml_getter(Get.TRACEROUTE_RESULT, {}).test
+        return html.unescape(res)
+
+    def cancel(self, command):
+        """
+        Kill the process with the given name
+
+        Two approaches:
+          * command is a string => cancel C[0].upper() + C[1:].lower(): command
+          * command is iterable => cancel the pair
+        """
+        if not isinstance(command, str):
+            lhs, rhs = command
+            arg = {lhs: rhs}
+        else:
+            arg = {command[0].upper() + command[1:].lower(): command.lower()}
+
+        return self.modem.xml_setter(Set.DIAGNOSTICS_CANCEL, arg).content
 
 
 class BackupRestore(object):
