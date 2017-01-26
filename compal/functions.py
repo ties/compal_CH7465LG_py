@@ -16,6 +16,7 @@ class Set(object):
     UPNP_STATUS = 101
     DHCP_V6 = 104
     DHCP_V4 = 106
+    NAT_MODE = 108
     FILTER_RULE = 110
     IPV6_FILTER_RULE = 112
     FIREWALL = 116

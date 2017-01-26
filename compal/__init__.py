@@ -24,6 +24,14 @@ logging.basicConfig()
 LOGGER.setLevel(logging.INFO)
 
 
+class NatMode(Enum):
+    """
+    Values for NAT-Mode
+    """
+    on = 1
+    off = 2
+
+
 class Compal(object):
     """
     Basic functionality for the router's API
@@ -235,6 +243,14 @@ class Compal(object):
         be active at any point in time.
         """
         return self.xml_setter(Set.LOGOUT, {})
+
+    def set_modem_mode(self):
+        """
+        Sets router to Modem-mode
+        After setting this, router will not be reachable by IP!
+        It needs factory reset to function as a router again!
+        """
+        return self.xml_setter(Set.NAT_MODE, {'NAT': NatMode.off.value})
 
     def change_password(self, old_password, new_password):
         """
