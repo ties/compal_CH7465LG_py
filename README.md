@@ -7,6 +7,23 @@ Compal CH7465LG). It is implemented in **Python > 3.4**.
 At the moment it *only* contains the functionality that I needed while I was investigating my
 device, but pull requests that improve the documentation or add features are welcome.
 
+About the hardware
+------------------
+Compal does not provide information about the hardware. The modem has no FCC registration.
+However, the related Arris TG2492 modem was submitted to the FCC. The FCC documents for this
+modem are [available][0]. Some interesting documents (internal photos) have been mirrored to
+`docs/fcc`.
+
+The modem seems to be based on the Intel Puma 6 chipset. There is a long thead on (perceived)
+performance problems caused by jitter on DSLReports. See [[ALL] SB6190 is a terrible modem - Intel Puma 6 / MaxLinear mistake][1]
+
+
+The modem *most likely* contains open source components. Requests to Compal requesting source
+code of these components, to an e-mail address on the Compal site, have not been answered yet.
+
+[0]: https://fccid.io/UIDTG2492
+[1]: https://www.dslreports.com/forum/r31079834-ALL-SB6190-is-a-terrible-modem-Intel-Puma-6-MaxLinear-mistake
+
 Security
 --------
 A security evaluation of the Connect Box was [posted](https://packetstormsecurity.com/files/137996/compalch7465lglc-bypassexec.txt)
