@@ -28,8 +28,8 @@ class NatMode(Enum):
     """
     Values for NAT-Mode
     """
-    on = 1
-    off = 2
+    enabled = 1
+    disabled = 2
 
 
 class Compal(object):
@@ -250,7 +250,7 @@ class Compal(object):
         After setting this, router will not be reachable by IP!
         It needs factory reset to function as a router again!
         """
-        return self.xml_setter(Set.NAT_MODE, {'NAT': NatMode.off.value})
+        return self.xml_setter(Set.NAT_MODE, {'NAT': NatMode.enabled.value})
 
     def change_password(self, old_password, new_password):
         """
