@@ -987,6 +987,53 @@ class FuncScanner(object):
             LOGGER.info("%s = %d", xml.documentElement.tagName.upper(),
                         self.current_pos - 1)
 
+
+class LanTable:
+    ETHERNET = "Ethernet"
+    WIFI = "WIFI"
+    TOTAL = 'totalClient'
+
+    def __init__(self, modem):
+        self.modem = modem
+        self.parser = etree.XMLParser(recover=True)
+        self.table = None
+        self.refresh()
+
+    def _parse_lan_table_xml(self, xml):
+        table = {LanTable.ETHERNET: [], LanTable.WIFI: []}
+        for con_type in table.keys():
+            for client in xml.find(con_type).findall("clientinfo"):
+                client_info = {}
+                for prop in client:
+                    client_info[prop.tag] = prop.text
+                table[con_type].append(client_info)
+        table[LanTable.TOTAL] = xml.find(LanTable.TOTAL).text
+        self.table = table
+
+    def _check_data(self):
+        if self.table is None:
+            self.refresh()
+
+    def refresh(self):
+        resp = self.modem.xml_getter(Get.LANUSERTABLE, {})
+        if resp.status_code != 200:
+            LOGGER.error("Didn't receive correct response, try to call LanTable.refresh()")
+            return
+        xml = etree.fromstring(resp.content, parser=self.parser)
+        self._parse_lan_table_xml(xml)
+
+    def get_lan(self):
+        self._check_data()
+        return self.table.get(LanTable.ETHERNET)
+
+    def get_wifi(self):
+        self._check_data()
+        return self.table.get(LanTable.WIFI)
+
+    def get_client_count(self):
+        self._check_data()
+        return self.table.get(LanTable.TOTAL)
+
 # How to use?
 # modem = Compal('192.168.178.1', '1234567')
 # modem.login()
