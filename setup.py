@@ -2,9 +2,9 @@
 from setuptools import setup, find_packages
 
 REQUIREMENTS = [
-    "requests==2.9.1",
-    "recordclass==0.4",
-    "lxml==3.6.4",
+    "requests>=2.20.0",
+    "recordclass>=0.4",
+    "lxml>=3.6.4",
 ]
 
 
