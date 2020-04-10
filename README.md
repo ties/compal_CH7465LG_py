@@ -2,7 +2,7 @@ Compal CH7465LG (Ziggo Connect Box) tools
 =============================================
 
 This repository contains a simple api to wrap the web interface of the Ziggo Connect Box (i.e. the
-Compal CH7465LG). It is implemented in **Python > 3.4**.
+Compal CH7465LG). It is implemented in **Python >= 3.7**.
 
 At the moment it *only* contains the functionality that I needed while I was investigating my
 device, but pull requests that improve the documentation or add features are welcome.

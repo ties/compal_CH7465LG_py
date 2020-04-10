@@ -12,11 +12,12 @@ with open(os.path.join(here, "README.md"), "rb") as f:
 
 setup(
     name="compal",
-    version="0.0.1",
+    version="0.1.0",
     author="Ties de Kock",
     author_email="ties@tiesdekock.nl",
     description="Compal CH7465LG/Ziggo Connect Box client",
     long_description_content_type="text/markdown",
+    long_description=long_descr,
     url="https://github.com/mbugert/connectbox-prometheus",
     entry_points={},
     install_requires=["requests", "lxml"],
