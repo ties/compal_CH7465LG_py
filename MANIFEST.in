@@ -12,6 +12,7 @@ include contributing.md RELEASING.txt HACKING.txt TODO.txt
 graft .github
 
 exclude requirements.txt requirements_test.txt
+exclude pyproject.toml
 
 global-exclude __pycache__ *.py[cod]
 global-exclude .DS_Store
