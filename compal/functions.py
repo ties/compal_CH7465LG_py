@@ -3,7 +3,7 @@ Constants that define the functions of the modem
 """
 
 
-class Set(object):
+class SetFunction:
     """
     Constants for the setters the modem in the modem's internal API
     """
@@ -35,7 +35,7 @@ class Set(object):
     WIFI_SETTINGS = 301
 
 
-class Get(object):
+class GetFunction:
     """
     Constants for the getters in the modem's internal API
     """

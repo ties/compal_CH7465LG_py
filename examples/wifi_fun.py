@@ -61,4 +61,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    modem_setup(args.host, args.password, args.wifi_pw, args.factory_reset)
+    modem_setup(args.host, args.password, args.wifi_pw)

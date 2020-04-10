@@ -6,17 +6,16 @@ import itertools
 import logging
 import urllib
 
-from xml.dom import minidom
-from enum import Enum
 from collections import OrderedDict
+from enum import Enum
+from dataclasses import dataclass
+from xml.dom import minidom
+from typing import Optional
+
 from lxml import etree
-
-# recordclass is a mutable variation on `collections.NamedTuple
-from recordclass import recordclass
-
 import requests
 
-from .functions import Set, Get
+from .functions import SetFunction, GetFunction
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig()
@@ -50,7 +49,7 @@ class Compal(object):
         # session token is initially empty
         self.session_token = None
 
-        LOGGER.debug("Getting initial token")
+        LOGGER.debug("GetFunctionting initial token")
         # check the initial URL. If it is redirected, perform the initial
         # installation
         self.initial_res = self.get('/')
@@ -73,22 +72,22 @@ class Compal(object):
         if not self.key:
             raise ValueError("No key/password availalbe")
 
-        self.xml_getter(Get.MULTILANG, {})
-        self.xml_getter(Get.LANGSETLIST, {})
-        self.xml_getter(Get.MULTILANG, {})
+        self.xml_getter(GetFunction.MULTILANG, {})
+        self.xml_getter(GetFunction.LANGSETLIST, {})
+        self.xml_getter(GetFunction.MULTILANG, {})
 
-        self.xml_setter(Set.LANGUAGE, {'lang': 'en'})
+        self.xml_setter(SetFunction.LANGUAGE, {'lang': 'en'})
         # Login or change password? Not sure.
-        self.xml_setter(Set.LOGIN, OrderedDict([
+        self.xml_setter(SetFunction.LOGIN, OrderedDict([
             ('Username', 'admin'),
             ('Password', self.key)
         ]))
-        # Get current wifi settings (?)
-        self.xml_getter(Get.WIRELESSBASIC, {})
+        # GetFunction current wifi settings (?)
+        self.xml_getter(GetFunction.WIRELESSBASIC, {})
 
         # Some sheets with hints, no request
         # installation is done:
-        self.xml_setter(Set.INSTALL_DONE, {
+        self.xml_setter(SetFunction.INSTALL_DONE, {
             'install': 0,
             'iv': 1,
             'en': 0
@@ -188,7 +187,7 @@ class Compal(object):
         Login. Allow this function to override the key.
         """
 
-        res = self.xml_setter(Set.LOGIN, OrderedDict([
+        res = self.xml_setter(SetFunction.LOGIN, OrderedDict([
             ('Username', 'admin'),
             ('Password', key if key else self.key)
         ]))
@@ -220,7 +219,7 @@ class Compal(object):
         """
         try:
             LOGGER.info("Performing a reboot - this will take a while")
-            return self.xml_setter(Set.REBOOT, {})
+            return self.xml_setter(SetFunction.REBOOT, {})
         except requests.exceptions.ReadTimeout:
             return None
 
@@ -228,11 +227,11 @@ class Compal(object):
         """
         Perform a factory reset
         """
-        default_settings = self.xml_getter(Get.DEFAULTVALUE, {})
+        default_settings = self.xml_getter(GetFunction.DEFAULTVALUE, {})
 
         try:
             LOGGER.info("Initiating factory reset - this will take a while")
-            self.xml_setter(Set.FACTORY_RESET, {})
+            self.xml_setter(SetFunction.FACTORY_RESET, {})
         except requests.exceptions.ReadTimeout:
             pass
         return default_settings
@@ -242,21 +241,29 @@ class Compal(object):
         Logout of the router. This is required since only a single session can
         be active at any point in time.
         """
-        return self.xml_setter(Set.LOGOUT, {})
+        return self.xml_setter(SetFunction.LOGOUT, {})
 
     def set_modem_mode(self):
         """
-        Sets router to Modem-mode
+        Set router to Modem-mode
         After setting this, router will not be reachable by IP!
         It needs factory reset to function as a router again!
         """
-        return self.xml_setter(Set.NAT_MODE, {'NAT': NatMode.enabled.value})
+        return self.xml_setter(SetFunction.NAT_MODE, {'NAT': NatMode.disabled.value})
+
+    def set_router_mode(self):
+        """
+        Set router to Modem-mode
+        After setting this, router will not be reachable by IP!
+        It needs factory reset to function as a router again!
+        """
+        return self.xml_setter(SetFunction.NAT_MODE, {'NAT': NatMode.enabled.value})
 
     def change_password(self, old_password, new_password):
         """
         Change the admin password
         """
-        return self.xml_setter(Set.CHANGE_PASSWORD, OrderedDict([
+        return self.xml_setter(SetFunction.CHANGE_PASSWORD, OrderedDict([
             ('oldpassword', old_password),
             ('newpassword', new_password)
         ]))
@@ -271,11 +278,17 @@ class Proto(Enum):
     both = 3
 
 
-PortForward = recordclass('PortForward', [  # pylint: disable=invalid-name
-    'local_ip', 'ext_port', 'int_port', 'proto', 'enabled', 'delete', 'idd',
-    'id', 'lan_ip'])
-# idd, id, lan_ip are None by default, delte is False by default
-PortForward.__new__.__defaults__ = (False, None, None, None,)
+@dataclass
+class PortForward:
+    local_ip: Optional[str] = None
+    ext_port: Optional[int] = None
+    int_port: Optional[int] = None
+    proto: Optional[str] = None
+    enabled: Optional[bool] = None
+    delete: Optional[bool] = None
+    idd: Optional[str] = None
+    id: Optional[str] = None
+    lan_ip: Optional[str] = None
 
 
 class PortForwards(object):
@@ -297,7 +310,7 @@ class PortForwards(object):
 
         @returns generator of PortForward rules
         """
-        res = self.modem.xml_getter(Get.FORWARDING, {})
+        res = self.modem.xml_getter(GetFunction.FORWARDING, {})
 
         xml = etree.fromstring(res.content, parser=self.parser)
         router_ip = xml.find('LanIP').text
@@ -335,7 +348,7 @@ class PortForwards(object):
             """
             return 1 if _bool else 2
 
-        return self.modem.xml_setter(Set.FIREWALL, OrderedDict([
+        return self.modem.xml_setter(SetFunction.FIREWALL, OrderedDict([
             ('firewallProtection', b2i(enabled)),
             ('blockIpFragments', ''),
             ('portScanDetection', ''),
@@ -360,7 +373,7 @@ class PortForwards(object):
         start_int, end_int = itertools.islice(itertools.repeat(int_port), 0, 2)
         start_ext, end_ext = itertools.islice(itertools.repeat(ext_port), 0, 2)
 
-        return self.modem.xml_setter(Set.PORT_FORWARDING, OrderedDict([
+        return self.modem.xml_setter(SetFunction.PORT_FORWARDING, OrderedDict([
             ('action', 'add'),
             ('instance', ''),
             ('local_IP', local_ip),
@@ -397,7 +410,7 @@ class PortForwards(object):
         LOGGER.info("Updating port forwards")
         LOGGER.debug(params)
 
-        return self.modem.xml_setter(Set.PORT_FORWARDING, params)
+        return self.modem.xml_setter(SetFunction.PORT_FORWARDING, params)
 
 
 class FilterAction(Enum):
@@ -468,7 +481,7 @@ class Filters(object):
         data += "TMODE=%i;" % timer_mode.value
         data += "TIMERULE=%s;" % timer_rule
 
-        self.modem.xml_setter(Set.PARENTAL_CONTROL, {'data': data})
+        self.modem.xml_setter(SetFunction.PARENTAL_CONTROL, {'data': data})
 
     def set_mac_filter(self, action, device_name, mac_addr, timer_mode,
                        enable):
@@ -499,7 +512,7 @@ class Filters(object):
         data += "MODE=%i," % timer_mode.value
         data += "TIME=%s;" % timerule
 
-        return self.modem.xml_setter(Set.MACFILTER, {'data': data})
+        return self.modem.xml_setter(SetFunction.MACFILTER, {'data': data})
 
     def set_ipv6_filter_rule(self):
         """
@@ -527,7 +540,7 @@ class Filters(object):
             ('TMode', ''),
             ('TRule', '')
         ])
-        return self.modem.xml_setter(Set.IPV6_FILTER_RULE, params)
+        return self.modem.xml_setter(SetFunction.IPV6_FILTER_RULE, params)
 
     def set_filter_rule(self):
         """
@@ -553,15 +566,34 @@ class Filters(object):
             ('TMode', ''),
             ('TRule', '')
         ])
-        return self.modem.xml_setter(Set.FILTER_RULE, params)
+        return self.modem.xml_setter(SetFunction.FILTER_RULE, params)
 
 
-RadioSettings = recordclass('RadioSettings', [  # pylint: disable=invalid-name
-    'bss_coexistence', 'radio_2g', 'radio_5g', 'nv_country', 'channel_range'])
-BandSetting = recordclass('BandSetting', [  # pylint: disable=invalid-name
-    'mode', 'ssid', 'bss_enable', 'radio', 'bandwidth', 'tx_mode',
-    'multicast_rate', 'hidden', 'pre_shared_key', 'tx_rate', 're_key',
-    'channel', 'security', 'wpa_algorithm'])
+@dataclass
+class RadioSetFunctiontings:
+    bss_coexistence: Optional[str] = None
+    radio_2g: Optional[str] = None
+    radio_5g: Optional[str] = None
+    nv_country: Optional[str] = None
+    channel_range: Optional[str] = None
+
+
+@dataclass
+class BandSetting:
+    mode: Optional[str] = None
+    ssid: Optional[str] = None
+    bss_enable: Optional[str] = None
+    radio: Optional[str] = None
+    bandwidth: Optional[str] = None
+    tx_mode: Optional[str] = None
+    multicast_rate: Optional[str] = None
+    hidden: Optional[str] = None
+    pre_shared_key: Optional[str] = None
+    tx_rate: Optional[str] = None
+    re_key: Optional[str] = None
+    channel: Optional[str] = None
+    security: Optional[str] = None
+    wpa_algorithm: Optional[str] = None
 
 
 class WifiSettings(object):
@@ -582,7 +614,7 @@ class WifiSettings(object):
         """
         Get the current wifi settings as XML
         """
-        xml_content = self.modem.xml_getter(Get.WIRELESSBASIC, {}).content
+        xml_content = self.modem.xml_getter(GetFunction.WIRELESSBASIC, {}).content
         return etree.fromstring(xml_content, parser=self.parser)
 
     @staticmethod
@@ -641,7 +673,7 @@ class WifiSettings(object):
         """
         xml = self.wifi_settings_xml
 
-        return RadioSettings(
+        return RadioSetFunctiontings(
             radio_2g=WifiSettings.band_setting(xml, '2g'),
             radio_5g=WifiSettings.band_setting(xml, '5g'),
             nv_country=int(xml.find('NvCountry').text),
@@ -694,10 +726,10 @@ class WifiSettings(object):
         # Join the settings
         out_settings = OrderedDict(out_s)
 
-        return self.modem.xml_setter(Set.WIFI_SETTINGS, out_settings)
+        return self.modem.xml_setter(SetFunction.WIFI_SETTINGS, out_settings)
 
 
-class DHCPSettings(object):
+class DHCPSettings:
     """
     Confgure the DHCP settings
     """
@@ -708,7 +740,7 @@ class DHCPSettings(object):
         """
         Add a static DHCP lease
         """
-        return self.modem.xml_setter(Set.STATIC_DHCP_LEASE, {
+        return self.modem.xml_setter(SetFunction.STATIC_DHCP_LEASE, {
             'data': 'ADD,{ip},{mac};'.format(ip=lease_ip, mac=lease_mac)
         })
 
@@ -716,7 +748,7 @@ class DHCPSettings(object):
         """
         Ensure that UPnP is set to the given value
         """
-        return self.modem.xml_setter(Set.UPNP_STATUS, OrderedDict([
+        return self.modem.xml_setter(SetFunction.UPNP_STATUS, OrderedDict([
             ('LanIP', ''),
             ('UPnP', 1 if enabled else 2),
             ('DHCP_addr_s', ''), ('DHCP_addr_e', ''),
@@ -731,7 +763,7 @@ class DHCPSettings(object):
         Change the DHCP range. This implies a change to the router IP
         **check**: The router takes the first IP in the given range
         """
-        return self.modem.xml_setter(Set.DHCP_V4, OrderedDict([
+        return self.modem.xml_setter(SetFunction.DHCP_V4, OrderedDict([
             ('action', 1),
             ('addr_start_s', addr_start), ('addr_end_s', addr_end),
             ('numberOfCpes_s', num_devices),
@@ -747,7 +779,7 @@ class DHCPSettings(object):
         """
         Configure IPv6 DHCP settings
         """
-        return self.modem.xml_setter(Set.DHCP_V6, OrderedDict([
+        return self.modem.xml_setter(SetFunction.DHCP_V6, OrderedDict([
             ('v6type', autoconf_type),
             ('Addr_start', addr_start),
             ('NumberOfAddrs', num_addrs),
@@ -760,7 +792,7 @@ class DHCPSettings(object):
         ]))
 
 
-class MiscSettings(object):
+class MiscSetFunctiontings(object):
     """
     Miscellanious settings
     """
@@ -769,9 +801,9 @@ class MiscSettings(object):
 
     def set_mtu(self, mtu_size):
         """
-        Sets the MTU
+        SetFunctions the MTU
         """
-        return self.modem.xml_setter(Set.MTU_SIZE, {
+        return self.modem.xml_setter(SetFunction.MTU_SIZE, {
             'MTUSize': mtu_size
         })
 
@@ -779,16 +811,16 @@ class MiscSettings(object):
         """
         Ensure that remote access is enabled/disabled on the given port
         """
-        return self.modem.xml_setter(Set.REMOTE_ACCESS, OrderedDict([
+        return self.modem.xml_setter(SetFunction.REMOTE_ACCESS, OrderedDict([
             ('RemoteAccess', 1 if enabled else 2),
             ('Port', port)
         ]))
 
     def set_forgot_pw_email(self, email_addr):
         """
-        Set email address for Forgot Password function
+        SetFunction email address for Forgot Password function
         """
-        return self.modem.xml_setter(Set.SET_EMAIL, OrderedDict([
+        return self.modem.xml_setter(SetFunction.SET_EMAIL, OrderedDict([
             ('email', email_addr),
             ('emailLen', len(email_addr)),
             ('opt', 0)
@@ -798,7 +830,7 @@ class MiscSettings(object):
         """
         Send an email to receive new or forgotten password
         """
-        return self.modem.xml_setter(Set.SEND_EMAIL, OrderedDict([
+        return self.modem.xml_setter(SetFunction.SEND_EMAIL, OrderedDict([
             ('email', email_addr),
             ('emailLen', len(email_addr)),
             ('opt', 0)
@@ -825,7 +857,7 @@ class Diagnostics(object):
         """
         Start Ping-Test
         """
-        return self.modem.xml_setter(Set.PING_TEST, OrderedDict([
+        return self.modem.xml_setter(SetFunction.PING_TEST, OrderedDict([
             ('Type', 1),
             ('Target_IP', target_addr),
             ('Ping_Size', ping_size),
@@ -837,7 +869,7 @@ class Diagnostics(object):
         """
         Stop Ping-Test
         """
-        return self.modem.xml_setter(Set.STOP_DIAGNOSTIC, {
+        return self.modem.xml_setter(SetFunction.STOP_DIAGNOSTIC, {
             'Ping': DiagToolName.ping
         })
 
@@ -845,14 +877,14 @@ class Diagnostics(object):
         """
         Get Ping-Test results
         """
-        return self.modem.xml_getter(Get.PING_RESULT, {})
+        return self.modem.xml_getter(GetFunction.PING_RESULT, {})
 
     def start_traceroute(self, target_addr, max_hops, data_size, base_port,
                          resolve_host):
         """
         Start Traceroute
         """
-        return self.modem.xml_setter(Set.TRACEROUTE, OrderedDict([
+        return self.modem.xml_setter(SetFunction.TRACEROUTE, OrderedDict([
             ('type', 1),
             ('Tracert_IP', target_addr),
             ('MaxHops', max_hops),
@@ -865,7 +897,7 @@ class Diagnostics(object):
         """
         Stop Traceroute
         """
-        return self.modem.xml_setter(Set.STOP_DIAGNOSTIC, {
+        return self.modem.xml_setter(SetFunction.STOP_DIAGNOSTIC, {
             'Traceroute': DiagToolName.traceroute
         })
 
@@ -873,7 +905,7 @@ class Diagnostics(object):
         """
         Get Traceroute results
         """
-        return self.modem.xml_getter(Get.TRACEROUTE_RESULT, {})
+        return self.modem.xml_getter(GetFunction.TRACEROUTE_RESULT, {})
 
 
 class BackupRestore(object):
@@ -892,7 +924,7 @@ class BackupRestore(object):
         """
         Backup the configuration and return it's content
         """
-        res = self.modem.xml_getter(Get.GLOBALSETTINGS, {})
+        res = self.modem.xml_getter(GetFunction.GLOBALSETTINGS, {})
         xml = etree.fromstring(res.content, parser=self.parser)
 
         if not filename:
@@ -935,7 +967,7 @@ class FuncScanner(object):
         Is the current sesion valid?
         """
         LOGGER.debug("Last login %d", self.last_login)
-        res = self.modem.xml_getter(Get.CM_SYSTEM_INFO, {})
+        res = self.modem.xml_getter(GetFunction.CM_SYSTEM_INFO, {})
         return res.status_code == 200
 
     def scan(self, quiet=False):
@@ -943,7 +975,7 @@ class FuncScanner(object):
         Scan the modem for functions. This iterates of the function calls
         """
         res = None
-        while not res or res.text is '':
+        while not res or res.text == '':
             if not quiet:
                 LOGGER.info("func=%s", self.current_pos)
 
@@ -989,6 +1021,7 @@ class FuncScanner(object):
 
 
 class LanTable:
+    """Table of known devices."""
     ETHERNET = "Ethernet"
     WIFI = "WIFI"
     TOTAL = 'totalClient'
@@ -1015,7 +1048,7 @@ class LanTable:
             self.refresh()
 
     def refresh(self):
-        resp = self.modem.xml_getter(Get.LANUSERTABLE, {})
+        resp = self.modem.xml_getter(GetFunction.LANUSERTABLE, {})
         if resp.status_code != 200:
             LOGGER.error("Didn't receive correct response, try to call LanTable.refresh()")
             return
@@ -1033,11 +1066,3 @@ class LanTable:
     def get_client_count(self):
         self._check_data()
         return self.table.get(LanTable.TOTAL)
-
-# How to use?
-# modem = Compal('192.168.178.1', '1234567')
-# modem.login()
-# Or provide key on login:
-# modem.login('1234567')
-# fw = PortForwards(modem)
-# print(list(fw.rules))
