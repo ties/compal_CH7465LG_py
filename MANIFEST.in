@@ -1,0 +1,14 @@
+include *.toml
+include *.txt
+include *.yaml
+include LICENSE
+include pylintrc
+include tox.ini
+include .flake8
+
+recursive-include docs *.pdf
+recursive-include docs *.txt
+recursive-include examples *.py
+
+global-exclude __pycache__ *.py[cod]
+global-exclude .DS_Store

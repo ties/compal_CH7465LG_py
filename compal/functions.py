@@ -7,6 +7,7 @@ class SetFunction:
     """
     Constants for the setters the modem in the modem's internal API
     """
+
     LANGUAGE = 4
     FACTORY_RESET = 7
     LOGIN = 15

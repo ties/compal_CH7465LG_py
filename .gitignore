@@ -2,3 +2,6 @@
 .python-version
 .tox
 compal.egg-info/**/*
+build
+.dist
+dist

@@ -1,10 +1,13 @@
 """ Set up script """
-from setuptools import setup, find_packages
+import os
 
-REQUIREMENTS = [
-    "requests>=2.23.0",
-    "lxml>=4.5.0",
-]
+from setuptools import find_packages, setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+
+with open(os.path.join(here, "README.md"), "rb") as f:
+    long_descr = f.read().decode("utf-8")
 
 
 setup(
@@ -12,14 +15,19 @@ setup(
     version="0.0.1",
     author="Ties de Kock",
     author_email="ties@tiesdekock.nl",
-    description=("Compal CH7465LG/Ziggo Connect Box client"),
+    description="Compal CH7465LG/Ziggo Connect Box client",
+    long_description_content_type="text/markdown",
+    url="https://github.com/mbugert/connectbox-prometheus",
+    entry_points={},
+    install_requires=["requests", "lxml"],
+    include_package_data=True,
+    python_requires=">=3.7",
     license="MIT",
     keywords="compal CH7465LG connect box cablemodem",
-    packages=find_packages(exclude=['examples', 'tests', 'tests.*']),
+    packages=find_packages(exclude=["examples", "tests", "tests.*"]),
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Topic :: Software Development :: Libraries",
         "License :: OSI Approved :: MIT License",
     ],
-    install_requires=REQUIREMENTS
 )
