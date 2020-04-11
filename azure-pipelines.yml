@@ -42,8 +42,8 @@ stages:
         pip install -e .
       displayName: 'Install'
     - script: |
-        pip install pytest pytest-azurepipelines
-        pytest
+        pip install pytest pytest-azurepipelines pytest-cov pytest-xdist
+        pytest --cov compal --cov-report html -qq -o console_output_style=count -p no:sugar tests
       displayName: 'pytest'
     # Dirty but low-effort way to run the same steps that tox does:
     # This could be a lint and a test stage
