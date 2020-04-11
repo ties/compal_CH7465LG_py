@@ -15,6 +15,14 @@ pr:
   - dev
   - master
 
+resources:
+  containers:
+  - container: py37
+    image: python:3.7
+    
+  - container: py38
+    image: python:3.8
+    
 stages:
 - stage: 'Test'
   jobs:
@@ -24,16 +32,13 @@ stages:
     strategy:
       matrix:
         Python37:
-          python.version: '3.7'
+          containerResource: py37
         Python38:
-          python.version: '3.8'
+          containerResource: py38
+
+    container: $[ variables['containerResource']]
 
     steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '$(python.version)'
-      displayName: 'Use Python $(python.version)'
-
     - script: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
