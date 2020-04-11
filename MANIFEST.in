@@ -1,4 +1,5 @@
 graft compal
+graft tests
 graft docs
 graft examples
 
@@ -9,6 +10,7 @@ include .coveragerc .flake8 setup.cfg pyproject.toml
 include .pre-commit-config.yaml pylintrc
 include tox.ini appveyor.yml .travis.yml rtd.txt
 include contributing.md RELEASING.txt HACKING.txt TODO.txt
+include azure-pipelines.yml pytest.ini
 graft .github
 
 exclude requirements.txt requirements_test.txt
