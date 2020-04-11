@@ -5,3 +5,4 @@ compal.egg-info/**/*
 build
 .dist
 dist
+test-output.xml
