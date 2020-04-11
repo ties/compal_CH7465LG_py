@@ -68,7 +68,7 @@ stages:
 - stage: 'Dist'
   dependsOn: 'Test'
   jobs:
-  - job: 'Build and create artifact'
+  - job: 'BuildDist'
     pool:
       vmImage: 'ubuntu-latest'
     strategy:
