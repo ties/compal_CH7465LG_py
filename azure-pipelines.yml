@@ -45,6 +45,9 @@ stages:
         pip install pytest pytest-azurepipelines
         pytest
       displayName: 'pytest'
-
+    # Dirty but low-effort way to run the same steps that tox does:
+    # This could be a lint and a test stage
     - script: |
+        pip install tox
         tox
+      displayName: 'tox'
