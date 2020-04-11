@@ -18,7 +18,7 @@ setup(
     description="Compal CH7465LG/Ziggo Connect Box client",
     long_description_content_type="text/markdown",
     long_description=long_descr,
-    url="https://github.com/mbugert/connectbox-prometheus",
+    url="https://github.com/ties/compal_CH7465LG_py",
     entry_points={},
     install_requires=["requests", "lxml"],
     include_package_data=True,
