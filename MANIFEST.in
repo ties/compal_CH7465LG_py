@@ -16,5 +16,7 @@ graft .github
 exclude requirements.txt requirements_test.txt
 exclude pyproject.toml
 
+exclude venv
+
 global-exclude __pycache__ *.py[cod]
 global-exclude .DS_Store
