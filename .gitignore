@@ -6,3 +6,4 @@ build
 .dist
 dist
 test-output.xml
+pip-wheel-metadata

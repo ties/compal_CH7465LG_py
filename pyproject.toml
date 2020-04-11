@@ -17,6 +17,7 @@ exclude = '''
   | blib2to3
   | tests/data
 )/
+'''
 
 # This next section only exists for people that have their editors
 # automatically call isort, black already sorts entries on its own when run.
