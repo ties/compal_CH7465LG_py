@@ -30,6 +30,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     strategy:
+      maxParallel: 3
       matrix:
         Python37:
           containerResource: py37
@@ -40,19 +41,27 @@ stages:
 
     steps:
     - script: |
-        python -m pip install --upgrade pip
+        python -m venv venv
+        . venv/bin/activate
+
         pip install -r requirements.txt
       displayName: 'Install dependencies'
     - script: |
+        . venv/bin/activate
+
         pip install -e .
       displayName: 'Install'
     - script: |
+        . venv/bin/activate
+
         pip install pytest pytest-azurepipelines pytest-cov pytest-xdist
         pytest --cov compal --cov-report html -qq -o console_output_style=count -p no:sugar tests
       displayName: 'pytest'
     # Dirty but low-effort way to run the same steps that tox does:
     # This could be a lint and a test stage
     - script: |
+        . venv/bin/activate
+
         pip install tox
         tox
       displayName: 'tox'
