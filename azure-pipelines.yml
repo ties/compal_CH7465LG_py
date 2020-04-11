@@ -64,4 +64,37 @@ stages:
 
         pip install tox
         tox
-      displayName: 'tox'
+
+- stage: 'Dist'
+  dependsOn: 'Test'
+  jobs:
+  - job: 'Build and create artifact'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python37:
+          containerResource: py37
+    container: $[ variables['containerResource']]
+
+    steps:
+    - script: |
+        python -m venv venv
+        . venv/bin/activate
+
+        pip install -r requirements.txt
+        pip install readme_renderer twine check-manifest
+      displayName: 'Install dependencies'
+    - script: |
+        . venv/bin/activate
+        twine check dist/*
+        check-manifest
+    - script: |
+        . venv/bin/activate
+
+        python setup.py sdist
+      displayName: 'Build dist'
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: 'dist'
+
