@@ -1,4 +1,5 @@
 graft compal
+graft tests
 graft docs
 graft examples
 
