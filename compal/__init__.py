@@ -6,7 +6,6 @@ import itertools
 import logging
 import urllib
 from collections import OrderedDict
-from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 from xml.dom import minidom
@@ -15,6 +14,15 @@ import requests
 from lxml import etree
 
 from .functions import GetFunction, SetFunction
+from .models import (
+    BandSetting,
+    FilterAction,
+    NatMode,
+    PortForward,
+    Proto,
+    RadioSettings,
+    TimerMode,
+)
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig()
@@ -22,16 +30,7 @@ logging.basicConfig()
 LOGGER.setLevel(logging.INFO)
 
 
-class NatMode(Enum):
-    """
-    Values for NAT-Mode
-    """
-
-    enabled = 1
-    disabled = 2
-
-
-class Compal(object):
+class Compal:
     """
     Basic functionality for the router's API
     """
@@ -50,7 +49,7 @@ class Compal(object):
         # session token is initially empty
         self.session_token = None
 
-        LOGGER.debug("GetFunctionting initial token")
+        LOGGER.debug("Getting initial token")
         # check the initial URL. If it is redirected, perform the initial
         # installation
         self.initial_res = self.get("/")
@@ -82,7 +81,7 @@ class Compal(object):
             SetFunction.LOGIN,
             OrderedDict([("Username", "admin"), ("Password", self.key)]),
         )
-        # GetFunction current wifi settings (?)
+        # Get current wifi settings (?)
         self.xml_getter(GetFunction.WIRELESSBASIC, {})
 
         # Some sheets with hints, no request
@@ -273,29 +272,6 @@ class Compal(object):
         )
 
 
-class Proto(Enum):
-    """
-    protocol (from form): 1 = tcp, 2 = udp, 3 = both
-    """
-
-    tcp = 1
-    udp = 2
-    both = 3
-
-
-@dataclass
-class PortForward:
-    local_ip: Optional[str] = None
-    ext_port: Optional[int] = None
-    int_port: Optional[int] = None
-    proto: Optional[str] = None
-    enabled: Optional[bool] = None
-    delete: Optional[bool] = None
-    idd: Optional[str] = None
-    id: Optional[str] = None
-    lan_ip: Optional[str] = None
-
-
 class PortForwards(object):
     """
     Manage the port forwards on the modem
@@ -437,25 +413,6 @@ class PortForwards(object):
         LOGGER.debug(params)
 
         return self.modem.xml_setter(SetFunction.PORT_FORWARDING, params)
-
-
-class FilterAction(Enum):
-    """
-    Filter action, used by internet access filters
-    """
-
-    add = 1
-    delete = 2
-    enable = 3
-
-
-class TimerMode(Enum):
-    """
-    Timermodes used for internet access filtering
-    """
-
-    generaltime = 1
-    dailytime = 2
 
 
 class Filters(object):
@@ -601,33 +558,6 @@ class Filters(object):
         return self.modem.xml_setter(SetFunction.FILTER_RULE, params)
 
 
-@dataclass
-class RadioSetFunctiontings:
-    bss_coexistence: Optional[str] = None
-    radio_2g: Optional[str] = None
-    radio_5g: Optional[str] = None
-    nv_country: Optional[str] = None
-    channel_range: Optional[str] = None
-
-
-@dataclass
-class BandSetting:
-    mode: Optional[str] = None
-    ssid: Optional[str] = None
-    bss_enable: Optional[str] = None
-    radio: Optional[str] = None
-    bandwidth: Optional[str] = None
-    tx_mode: Optional[str] = None
-    multicast_rate: Optional[str] = None
-    hidden: Optional[str] = None
-    pre_shared_key: Optional[str] = None
-    tx_rate: Optional[str] = None
-    re_key: Optional[str] = None
-    channel: Optional[str] = None
-    security: Optional[str] = None
-    wpa_algorithm: Optional[str] = None
-
-
 class WifiSettings(object):
     """
     Configures the WiFi settings
@@ -705,7 +635,7 @@ class WifiSettings(object):
         """
         xml = self.wifi_settings_xml
 
-        return RadioSetFunctiontings(
+        return RadioSettings(
             radio_2g=WifiSettings.band_setting(xml, "2g"),
             radio_5g=WifiSettings.band_setting(xml, "5g"),
             nv_country=int(xml.find("NvCountry").text),
@@ -860,7 +790,7 @@ class DHCPSettings:
         )
 
 
-class MiscSetFunctiontings(object):
+class MiscSettings(object):
     """
     Miscellanious settings
     """
@@ -870,7 +800,7 @@ class MiscSetFunctiontings(object):
 
     def set_mtu(self, mtu_size):
         """
-        SetFunctions the MTU
+        Sets the MTU
         """
         return self.modem.xml_setter(SetFunction.MTU_SIZE, {"MTUSize": mtu_size})
 
@@ -885,7 +815,7 @@ class MiscSetFunctiontings(object):
 
     def set_forgot_pw_email(self, email_addr):
         """
-        SetFunction email address for Forgot Password function
+        Set email address for Forgot Password function
         """
         return self.modem.xml_setter(
             SetFunction.SET_EMAIL,

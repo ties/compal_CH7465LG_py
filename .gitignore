@@ -7,3 +7,4 @@ build
 dist
 test-output.xml
 pip-wheel-metadata
+.DS_Store

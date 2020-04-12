@@ -1,5 +1,6 @@
 from compal.functions import GetFunction, SetFunction
 
+
 def validate_key_value_object(key_value_object):
     known_keys = set()
     known_values = set()
