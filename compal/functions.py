@@ -34,6 +34,7 @@ class SetFunction:
     PARENTAL_CONTROL = 141
     STATIC_DHCP_LEASE = 148
     WIFI_SETTINGS = 301
+    UPCSETWIRELESS = 319
 
 
 class GetFunction:

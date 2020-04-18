@@ -152,7 +152,7 @@ class Compal:
 
         headers = {
             "Content-Disposition": 'form-data; name="file"; filename="%s"'
-            % filename,  # noqa
+                                   % filename,  # noqa
             "Content-Type": "application/octet-stream",
         }
         self.session.post(self.url(path), data=binary_data, headers=headers, **kwargs)
@@ -316,13 +316,13 @@ class PortForwards(object):
             )
 
     def update_firewall(
-        self,
-        enabled=False,
-        fragment=False,
-        port_scan=False,
-        ip_flood=False,
-        icmp_flood=False,
-        icmp_rate=15,
+            self,
+            enabled=False,
+            fragment=False,
+            port_scan=False,
+            ip_flood=False,
+            icmp_flood=False,
+            icmp_rate=15,
     ):
         """
         Update the firewall rules
@@ -427,7 +427,7 @@ class Filters(object):
         self.modem = modem
 
     def set_parental_control(
-        self, safe_search, keyword_list, allow_list, deny_list, timer_mode, enable,
+            self, safe_search, keyword_list, allow_list, deny_list, timer_mode, enable,
     ):
         """
         Filter internet access by keywords or block/allow whole urls
@@ -571,23 +571,24 @@ class WifiSettings(object):
 
         self.modem = modem
 
-    @property
-    def wifi_settings_xml(self):
+    # @property
+    def wifi_settings_xml(self, chipsatz):
         """
         Get the current wifi settings as XML
         """
-        xml_content = self.modem.xml_getter(GetFunction.WIRELESSBASIC, {}).content
+        xml_content = self.modem.xml_getter(chipsatz, {}).content
+        # print("\n --- XML-CONTENT ---  \n" + xml_content.decode("utf-8"))
         return etree.fromstring(xml_content, parser=self.parser)
 
     @staticmethod
-    def band_setting(xml, band):
+    def band_setting(wirelessbasic, wifistate, band):
         """
         Get the wifi settings for the given band (2g, 5g)
         """
         assert band in ("2g", "5g",)
         band_number = int(band[0])
 
-        def xml_value(attr, coherce=True):
+        def xml_value(xml, attr, coherce=True):
             """
             'XmlValue'
 
@@ -595,6 +596,7 @@ class WifiSettings(object):
             integer, if this fails it is returned as a string.
             """
             val = xml.find(attr).text
+
             try:  # Try to coherce to int. If it fails, return string
                 if not coherce:
                     return val
@@ -607,24 +609,38 @@ class WifiSettings(object):
             xml value for the given band
             """
             try:
-                return xml_value("{}{}".format(attr, band.upper()), coherce)
+                return xml_value(wirelessbasic, attr + band.upper(), coherce)
             except AttributeError:
-                return xml_value("{}{}".format(attr, band), coherce)
+                return xml_value(wirelessbasic, attr + band, coherce)
+
+        def primary_xml(attr):
+            if band_number == 2:
+                val = xml_value(wifistate, attr + "24g")
+            elif band_number == 5:
+                val = xml_value(wifistate, attr + "5g")
+            else:
+                val = None
+
+            if val == 0:
+                val = 2
+            return val
 
         return BandSetting(
             radio=band,
-            mode=bool(xml_value("Bandmode") & band_number),
-            ssid=band_xv("SSID", False),
-            bss_enable=bool(band_xv("BssEnable")),
-            bandwidth=band_xv("BandWidth"),
-            tx_mode=band_xv("TransmissionMode"),
-            multicast_rate=band_xv("MulticastRate"),
+            # wrong_mode=bool(xml_value(wirelessbasic, "Bandmode") & band_number),
+            mode=primary_xml("primary"),
+            bss_enable=band_xv("BssEnable"),
             hidden=band_xv("HideNetwork"),
-            pre_shared_key=band_xv("PreSharedKey"),
+            ssid=band_xv("SSID", False),
+            bandwidth=band_xv("BandWidth"),
             tx_rate=band_xv("TransmissionRate"),
-            re_key=band_xv("GroupRekeyInterval"),
-            channel=band_xv("CurrentChannel"),
+            tx_mode=band_xv("TransmissionMode"),
             security=band_xv("SecurityMode"),
+            multicast_rate=band_xv("MulticastRate"),
+            channel=band_xv("ChannelSetting"),
+            # current_channel=band_xv("CurrentChannel"),
+            pre_shared_key=band_xv("PreSharedKey"),
+            re_key=band_xv("GroupRekeyInterval"),
             wpa_algorithm=band_xv("WpaAlgorithm"),
         )
 
@@ -633,20 +649,37 @@ class WifiSettings(object):
         """
         Read the wifi settings
         """
-        xml = self.wifi_settings_xml
+        wirelessbasic = self.wifi_settings_xml(GetFunction.WIRELESSBASIC)
+        wifistate = self.wifi_settings_xml(GetFunction.WIFISTATE)
+
+        radio_2g = WifiSettings.band_setting(wirelessbasic, wifistate, "2g")
+        radio_5g = WifiSettings.band_setting(wirelessbasic, wifistate, "5g")
+
+        def get_band_mode():
+            if radio_2g.mode == 1:
+                band_mode = 1 if radio_5g.mode == 2 else 3
+            elif radio_2g.mode == 2:
+                band_mode = 2 if radio_5g.mode == 1 else 4
+            else:
+                band_mode = None
+            return band_mode
 
         return RadioSettings(
-            radio_2g=WifiSettings.band_setting(xml, "2g"),
-            radio_5g=WifiSettings.band_setting(xml, "5g"),
-            nv_country=int(xml.find("NvCountry").text),
-            channel_range=int(xml.find("ChannelRange").text),
-            bss_coexistence=bool(xml.find("BssCoexistence").text),
+            nv_country=int(wirelessbasic.find("NvCountry").text),
+            band_mode=get_band_mode(),
+            channel_range=int(wirelessbasic.find("ChannelRange").text),
+            bss_coexistence=int(wirelessbasic.find("BssCoexistence").text),
+            son_admin_status=int(wirelessbasic.find("SONAdminStatus").text),
+            smart_wifi=int(wirelessbasic.find("SONOperationalStatus").text),
+            radio_2g=radio_2g,
+            radio_5g=radio_5g,
         )
 
-    def update_wifi_settings(self, settings):
+    def update_wifi_settings(self, settings, code):
         """
         Update the wifi settings
         """
+
         # Create the object.
         def transform_radio(radio_settings):  # rs = radio_settings
             """
@@ -654,14 +687,20 @@ class WifiSettings(object):
             Returns a OrderedDict with the correct keys for this band
             """
             # Create the dict
-            out = OrderedDict(
+            if code == SetFunction.WIFI_SETTINGS:
+                out = [("BandMode", radio_settings.mode)]
+            elif code == SetFunction.UPCSETWIRELESS:
+                out = []
+            else:
+                raise Exception("Meh, du muss WIFI_SETTINGS od UPCSETWIRELESS wählen")
+
+            out.extend(
                 [
-                    ("BandMode", int(radio_settings.mode)),
                     ("Ssid", radio_settings.ssid),
                     ("Bandwidth", radio_settings.bandwidth),
                     ("TxMode", radio_settings.tx_mode),
                     ("MCastRate", radio_settings.multicast_rate),
-                    ("Hiden", int(radio_settings.hidden)),
+                    ("Hiden", radio_settings.hidden),
                     ("PSkey", radio_settings.pre_shared_key),
                     ("Txrate", radio_settings.tx_rate),
                     ("Rekey", radio_settings.re_key),
@@ -672,30 +711,55 @@ class WifiSettings(object):
             )
 
             # Prefix 'wl', Postfix the band
-            return OrderedDict(
+            return (
                 [
-                    ("wl{}{}".format(k, radio_settings.radio), v)
-                    for (k, v) in out.items()
+                    (f"wl{k}{radio_settings.radio}", v)
+                    for (k, v) in out
                 ]
             )
 
         # Alternate the two setting lists
-        out_s = []
+        out_s = []  # change
+        if code == SetFunction.UPCSETWIRELESS:
+            out_s.append(('wlBandMode', settings.band_mode))  # change
 
         for item_2g, item_5g in zip(
-            transform_radio(settings.radio_2g).items(),
-            transform_radio(settings.radio_5g).items(),
+                transform_radio(settings.radio_2g),
+                transform_radio(settings.radio_5g),
         ):
             out_s.append(item_2g)
             out_s.append(item_5g)
 
-            if item_2g[0] == "wlHiden5g":
+            if item_5g[0] == "wlHiden5g":
                 out_s.append(("wlCoexistence", settings.bss_coexistence))
 
+        if code == SetFunction.UPCSETWIRELESS:
+            out_s.append(('wlSmartWiFi', settings.smart_wifi))  # change
         # Join the settings
         out_settings = OrderedDict(out_s)
 
-        return self.modem.xml_setter(SetFunction.WIFI_SETTINGS, out_settings)
+        print(f"\nThe following variables will be sent over {code} to the router for setting:\n" + str(out_settings))
+
+        if code == SetFunction.WIFI_SETTINGS:
+            return self.modem.xml_setter(SetFunction.WIFI_SETTINGS, out_settings)  # change
+        elif code == SetFunction.UPCSETWIRELESS:
+            return self.modem.xml_setter(SetFunction.UPCSETWIRELESS, out_settings)  # change
+
+    # def switch_wifi(self, switch, wifi="2g"):
+    #     if ("2g" or "5g") not in wifi:
+    #         return
+    #     prefix = "wlBandMode"
+    #     if switch == "on":
+    #         out_settings = {prefix+wifi: 1}
+    #     elif switch == "off":
+    #         out_settings = {prefix+wifi: 2}
+    #     else:
+    #         return
+    #     return self.modem.xml_setter(SetFunction.WIFI_SETTINGS, out_settings)
+
+    def set_wifi_attr(self, key, value):
+        out_settings = {key: value}
+        return self.modem.xml_setter(SetFunction.UPCSETWIRELESS, out_settings)
 
 
 class DHCPSettings:
@@ -758,16 +822,16 @@ class DHCPSettings:
         )
 
     def set_ipv6_dhcp(
-        self,
-        autoconf_type,
-        addr_start,
-        addr_end,
-        num_addrs,
-        vlifetime,
-        ra_lifetime,
-        ra_interval,
-        radvd,
-        dhcpv6,
+            self,
+            autoconf_type,
+            addr_start,
+            addr_end,
+            num_addrs,
+            vlifetime,
+            ra_lifetime,
+            ra_interval,
+            radvd,
+            dhcpv6,
     ):
         """
         Configure IPv6 DHCP settings
@@ -885,7 +949,7 @@ class Diagnostics(object):
         return self.modem.xml_getter(GetFunction.PING_RESULT, {})
 
     def start_traceroute(
-        self, target_addr, max_hops, data_size, base_port, resolve_host
+            self, target_addr, max_hops, data_size, base_port, resolve_host
     ):
         """
         Start Traceroute
@@ -1016,7 +1080,7 @@ class FuncScanner(object):
             res = self.scan()
             xmlstr = minidom.parseString(res.content).toprettyxml(indent="   ")
             with io.open(
-                "func_%i.xml" % (self.current_pos - 1), "wt"
+                    "func_%i.xml" % (self.current_pos - 1), "wt"
             ) as f:  # noqa pylint: disable=invalid-name
                 f.write("===== HEADERS =====\n")
                 f.write(str(res.headers))
