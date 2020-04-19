@@ -130,24 +130,25 @@ Static DHCP leases:
 
     `OrderedDict([('wlBandMode', var), ('wlSsid2g', var), ('wlSsid5g', var),('wlBandwidth2g', var), ('wlBandwidth5g', var), ('wlTxMode2g', var), ('wlTxMode5g', var), ('wlMCastRate2g', var), ('wlMCastRate5g', var), ('wlHiden2g', var), ('wlHiden5g', var), ('wlCoexistence', var), ('wlPSkey2g', var), ('wlPSkey5g', var), ('wlTxrate2g', var), ('wlTxrate5g', var), ('wlRekey2g', var), ('wlRekey5g', var), ('wlChannel2g', var), ('wlChannel5g', var), ('wlSecurity2g', var), ('wlSecurity5g', var), ('wlWpaalg2g', var), ('wlWpaalg5g', var), ('wlSmartWiFi', var)])`
 ---
-* VARIABLES THAT CAN NOT BE SET/CHANGED OVER `fun=301` or `fun= 319` (after tests) :
+* VARIABLES THAT CAN NOT BE SET/CHANGED OR DON'T GET SENT OVER `fun=301` or `fun= 319` (after tests) :
+    * **`nv_country (=doesn't get sent over fun:301 or fun:319)`**: So it always stays `1`
     * **`band_mode (=wlBandMode)`**: 
         > This is a special variable that can be set, but not changed (see below `fun:319`)
+    * **`channel_range (=doesn't get sent over fun:301 or fun:319)`**: So it always stays `1`
     * **`bss_coexistence (=wlCoexistence)`**: Stays always `1`
-    * **`radio_2g.bss_enable` or `radio_5g.bss_enable `**: 
-        >Will be set over `band_mode` (`fun:319`) or over `radio_2g.mode` / `radio_5g.mode` (`fun:301`)
+    * **`son_admin_status (=doesn't get sent over fun:301 or fun:319)`**: So it always stays `1`
     * **`radio_2g.multicast_rate  (=wlMCastRate2g)` or `radio_5g.multicast_rate  (=wlMCastRate5g)`**: Stays always `1`
-   * **`radio_2g.tx_rate  (=wlTxrate2g)` or `radio_5g.tx_rate  (=wlTxrate5g)`**: Stays always `0`  
+    * **`radio_2g.tx_rate  (=wlTxrate2g)` or `radio_5g.tx_rate  (=wlTxrate5g)`**: Stays always `0`  
 ---
 * VARIABLES THAT CAN BE SET OVER `fun:301` (Wifi Configuration Page):
-    * **`radio_2g.mode (=wlBandMode2g)`**: Possible integer input values -> `1`,`2`
+    * **`radio_2g.bss_enable (=wlBandMode2g)`**: Possible integer input values -> `1`,`2`
         > (`wlBandMode2g=1`) means 2g is on <br>
         (`wlBandMode2g=2`) means 2g is off 
                                                      
         _What changes in the router-xml-file is the following: <br>_
         > FROM: /getter.xml fun=326 <br>
         `<primary24g>var</primary24g>`                      // var -> (1=on / 0=off)
-    * **`radio_5g.mode (=wlBandMode5g)`**: Possible integer input values -> `1`,`2`
+    * **`radio_5g.bss_enable (=wlBandMode5g)`**: Possible integer input values -> `1`,`2`
         > (`wlBandMode5g=1`) means 5g is on <br>
         (`wlBandMode5g=2`) means 5g is off 
                                                      
@@ -224,7 +225,7 @@ Static DHCP leases:
         (`wlBandMode=3`) means 2g is on an 5g is on <br>
         (`wlBandMode=4`) means 2g is off an 5g is off <br>
                                                                              
-        `<Bandmode>3</Bandmode>` in the router-xml-file stays always at value=`3`. But when you set `band_mode` `radio_2g.bss_enable`, `radio_5g.bss_enable`, `radio_2g.mode` and `radio_5g.mode` changes. 
+        `<Bandmode>3</Bandmode>` in the router-xml-file stays always at value=`3`. But when you set `band_mode` `radio_2g.bss_enable` and `radio_5g.bss_enable` changes. 
         
         _What changes in the router-xml-file is the following: <br>_
         > FROM: /getter.xml fun=300 <br>
