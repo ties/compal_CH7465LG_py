@@ -842,8 +842,6 @@ class WifiSettings(object):
             print(f"\n--- SETTINGS BEFORE UPDATING ---:")
             print(str(old_settings))
 
-        new_settings = self.__update_new_settings(old_settings, new_settings)
-
         if debug:
             print(f"\n--- CHANGES THAT SHOULD BE SET ---")
         _, changes = self.__compare_wifi_settings(old_settings, new_settings)
@@ -854,6 +852,8 @@ class WifiSettings(object):
         signal_page = ['band_mode', 'bandwidth', 'tx_mode', 'channel', 'smart_wifi']
         config_page_update = any(e in str(changes) for e in configuration_page)
         signal_page_update = any(e in str(changes) for e in signal_page)
+
+        new_settings = self.__update_new_settings(old_settings, new_settings)
 
         # both_pages also checks if both wifi pages (signal and configuration) are not
         # changed, so that it request fun:301 and fun:319 for settings changes that
