@@ -566,7 +566,7 @@ class WifiSettings(object):
 
     def __init__(self, modem):
         # The modem sometimes returns invalid XML when 'strange' values are
-        # present in the settings. The recovering parser from xml is used to
+        # present in the settings. The recovering parser from lxml is used to
         # handle this.
         self.parser = etree.XMLParser(recover=True)
 
