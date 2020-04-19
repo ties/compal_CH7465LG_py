@@ -6,17 +6,15 @@ from typing import Optional
 @dataclass
 class BandSetting():
     radio: Optional[int] = None
-    mode: Optional[int] = None
-    hidden: Optional[str] = None
     bss_enable: Optional[int] = None
     ssid: Optional[str] = None
+    hidden: Optional[str] = None
     bandwidth: Optional[int] = None
     tx_rate: Optional[int] = None
     tx_mode: Optional[int] = None
     security: Optional[int] = None
     multicast_rate: Optional[int] = None
     channel: Optional[int] = None
-    # current_channel: Optional[int] = None
     pre_shared_key: Optional[str] = None
     re_key: Optional[str] = None
     wpa_algorithm: Optional[int] = None

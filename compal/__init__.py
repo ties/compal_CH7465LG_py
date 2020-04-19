@@ -12,6 +12,7 @@ from xml.dom import minidom
 
 import requests
 from lxml import etree
+import time
 
 from .functions import GetFunction, SetFunction
 from .models import (
@@ -565,30 +566,29 @@ class WifiSettings(object):
 
     def __init__(self, modem):
         # The modem sometimes returns invalid XML when 'strange' values are
-        # present in the settings. The recovering parser from lxml is used to
+        # present in the settings. The recovering parser from xml is used to
         # handle this.
         self.parser = etree.XMLParser(recover=True)
 
         self.modem = modem
 
-    # @property
-    def wifi_settings_xml(self, chipsatz):
+    @property
+    def wifi_settings_xml(self):
         """
         Get the current wifi settings as XML
         """
-        xml_content = self.modem.xml_getter(chipsatz, {}).content
-        # print("\n --- XML-CONTENT ---  \n" + xml_content.decode("utf-8"))
+        xml_content = self.modem.xml_getter(GetFunction.WIRELESSBASIC, {}).content
         return etree.fromstring(xml_content, parser=self.parser)
 
     @staticmethod
-    def band_setting(wirelessbasic, wifistate, band):
+    def band_setting(xml, band):
         """
         Get the wifi settings for the given band (2g, 5g)
         """
         assert band in ("2g", "5g",)
         band_number = int(band[0])
 
-        def xml_value(xml, attr, coherce=True):
+        def xml_value(attr, coherce=True):
             """
             'XmlValue'
 
@@ -596,7 +596,6 @@ class WifiSettings(object):
             integer, if this fails it is returned as a string.
             """
             val = xml.find(attr).text
-
             try:  # Try to coherce to int. If it fails, return string
                 if not coherce:
                     return val
@@ -609,36 +608,21 @@ class WifiSettings(object):
             xml value for the given band
             """
             try:
-                return xml_value(wirelessbasic, attr + band.upper(), coherce)
+                return xml_value(f"{attr}{band.upper()}", coherce)
             except AttributeError:
-                return xml_value(wirelessbasic, attr + band, coherce)
-
-        def primary_xml(attr):
-            if band_number == 2:
-                val = xml_value(wifistate, attr + "24g")
-            elif band_number == 5:
-                val = xml_value(wifistate, attr + "5g")
-            else:
-                val = None
-
-            if val == 0:
-                val = 2
-            return val
+                return xml_value(f"{attr}{band}", coherce)
 
         return BandSetting(
             radio=band,
-            # wrong_mode=bool(xml_value(wirelessbasic, "Bandmode") & band_number),
-            mode=primary_xml("primary"),
-            bss_enable=band_xv("BssEnable"),
-            hidden=band_xv("HideNetwork"),
+            bss_enable=band_xv("BssEnable"),  # bss_enable is the on/off mode, 'mode' was removed
             ssid=band_xv("SSID", False),
+            hidden=band_xv("HideNetwork"),
             bandwidth=band_xv("BandWidth"),
             tx_rate=band_xv("TransmissionRate"),
             tx_mode=band_xv("TransmissionMode"),
             security=band_xv("SecurityMode"),
             multicast_rate=band_xv("MulticastRate"),
             channel=band_xv("ChannelSetting"),
-            # current_channel=band_xv("CurrentChannel"),
             pre_shared_key=band_xv("PreSharedKey"),
             re_key=band_xv("GroupRekeyInterval"),
             wpa_algorithm=band_xv("WpaAlgorithm"),
@@ -649,50 +633,51 @@ class WifiSettings(object):
         """
         Read the wifi settings
         """
-        wirelessbasic = self.wifi_settings_xml(GetFunction.WIRELESSBASIC)
-        wifistate = self.wifi_settings_xml(GetFunction.WIFISTATE)
+        xml = self.wifi_settings_xml
 
-        radio_2g = WifiSettings.band_setting(wirelessbasic, wifistate, "2g")
-        radio_5g = WifiSettings.band_setting(wirelessbasic, wifistate, "5g")
+        radio_2g = WifiSettings.band_setting(xml, "2g")
+        radio_5g = WifiSettings.band_setting(xml, "5g")
 
+        """
+        Correct the - in the router xml-File - not changing BandMode, 
+        so that all settings are up to date in the settings object
+        """
         def get_band_mode():
-            if radio_2g.mode == 1:
-                band_mode = 1 if radio_5g.mode == 2 else 3
-            elif radio_2g.mode == 2:
-                band_mode = 2 if radio_5g.mode == 1 else 4
+            if radio_2g.bss_enable == 1:
+                band_mode = 1 if radio_5g.bss_enable == 2 else 3
+            elif radio_2g.bss_enable == 2:
+                band_mode = 2 if radio_5g.bss_enable == 1 else 4
             else:
                 band_mode = None
             return band_mode
 
         return RadioSettings(
-            nv_country=int(wirelessbasic.find("NvCountry").text),
+            nv_country=int(xml.find("NvCountry").text),
             band_mode=get_band_mode(),
-            channel_range=int(wirelessbasic.find("ChannelRange").text),
-            bss_coexistence=int(wirelessbasic.find("BssCoexistence").text),
-            son_admin_status=int(wirelessbasic.find("SONAdminStatus").text),
-            smart_wifi=int(wirelessbasic.find("SONOperationalStatus").text),
+            channel_range=int(xml.find("ChannelRange").text),
+            bss_coexistence=int(xml.find("BssCoexistence").text),
+            son_admin_status=int(xml.find("SONAdminStatus").text),
+            smart_wifi=int(xml.find("SONOperationalStatus").text),
             radio_2g=radio_2g,
             radio_5g=radio_5g,
         )
 
-    def update_wifi_settings(self, settings, code):
+    def __set_wifi_settings(self, settings, setter_code, debug=True):
         """
-        Update the wifi settings
+        Set the wifi settings either for fun:301 or fun:319 depending
+        on the the setter_code parameter
         """
 
         # Create the object.
         def transform_radio(radio_settings):  # rs = radio_settings
             """
-            Perpare radio settings object for the request.
+            Prepare radio settings object for the request.
             Returns a OrderedDict with the correct keys for this band
             """
             # Create the dict
-            if code == SetFunction.WIFI_SETTINGS:
-                out = [("BandMode", radio_settings.mode)]
-            elif code == SetFunction.UPCSETWIRELESS:
-                out = []
-            else:
-                raise Exception("Meh, du muss WIFI_SETTINGS od UPCSETWIRELESS wählen")
+            out = []
+            if setter_code == SetFunction.WIFI_CONFIGURATION:
+                out = [("BandMode", radio_settings.bss_enable)]
 
             out.extend(
                 [
@@ -720,7 +705,7 @@ class WifiSettings(object):
 
         # Alternate the two setting lists
         out_s = []  # change
-        if code == SetFunction.UPCSETWIRELESS:
+        if setter_code == SetFunction.WIFI_SIGNAL:
             out_s.append(('wlBandMode', settings.band_mode))  # change
 
         for item_2g, item_5g in zip(
@@ -733,33 +718,184 @@ class WifiSettings(object):
             if item_5g[0] == "wlHiden5g":
                 out_s.append(("wlCoexistence", settings.bss_coexistence))
 
-        if code == SetFunction.UPCSETWIRELESS:
+        if setter_code == SetFunction.WIFI_SIGNAL:
             out_s.append(('wlSmartWiFi', settings.smart_wifi))  # change
         # Join the settings
         out_settings = OrderedDict(out_s)
 
-        print(f"\nThe following variables will be sent over {code} to the router for setting:\n" + str(out_settings))
+        if debug:
+            print(f"\nThe following variables will be sent over 'fun:{setter_code}'"
+                  f" to the router for settting it:\n" + str(out_settings))
 
-        if code == SetFunction.WIFI_SETTINGS:
-            return self.modem.xml_setter(SetFunction.WIFI_SETTINGS, out_settings)  # change
-        elif code == SetFunction.UPCSETWIRELESS:
-            return self.modem.xml_setter(SetFunction.UPCSETWIRELESS, out_settings)  # change
+        return self.modem.xml_setter(setter_code, out_settings)  # change
 
-    # def switch_wifi(self, switch, wifi="2g"):
-    #     if ("2g" or "5g") not in wifi:
-    #         return
-    #     prefix = "wlBandMode"
-    #     if switch == "on":
-    #         out_settings = {prefix+wifi: 1}
-    #     elif switch == "off":
-    #         out_settings = {prefix+wifi: 2}
-    #     else:
-    #         return
-    #     return self.modem.xml_setter(SetFunction.WIFI_SETTINGS, out_settings)
+    def print_xml_content(self, point=""):
+        """
+        Print out xml-entries in the router that contain wifi-settings
+        """
+        print(f"\n--- SETTINGS {point} ---:")
+        # WIFI State
+        xml_content = self.modem.xml_getter(315, {}).content
+        print("\n ------------------------- WIRELESSBASIC_2 (315) IN ROUTER: : -------------------------\n"
+              + xml_content.decode('utf8'))
+        xml_content = self.modem.xml_getter(326, {}).content
+        print("\n ------------------------- WIFISTATE (326) IN ROUTER: : -------------------------\n"
+              + xml_content.decode('utf8'))
+        xml_content = self.modem.xml_getter(300, {}).content
+        print("\n ------------------------- WIRELESSBASIC (300) IN ROUTER: : -------------------------\n"
+              + xml_content.decode('utf8'))
+        print(str(self.wifi_settings))
+        time.sleep(1)
 
-    def set_wifi_attr(self, key, value):
-        out_settings = {key: value}
-        return self.modem.xml_setter(SetFunction.UPCSETWIRELESS, out_settings)
+    @staticmethod
+    def __compare_wifi_settings(old_settings, new_settings):
+        """
+        Compare two settings objects for changes and
+        return:
+            bln_changes: True if there were changes
+            changes: Python dict that contains the changes
+        """
+
+        def iterate_changes(old_settings, new_settings, changes):
+            for attr, old_value in old_settings.__dict__.items():
+                if isinstance(old_value, BandSetting):
+                    changes.update({attr: {}})
+                    iterate_changes(getattr(old_settings, attr), getattr(new_settings, attr), changes[attr])
+                else:
+                    new_value = getattr(new_settings, attr)
+                    if old_value != new_value:
+                        changes.update({attr: f"{old_value} -> {new_value}"})
+                        bln_changes[0] = True
+
+        changes = {}
+        bln_changes = [False]
+        iterate_changes(old_settings, new_settings, changes)
+        return bln_changes[0], changes
+
+    def __check_router_status(self, new_settings, debug=True):
+        """
+        Checks if (1) the new user settings were changed in the router (via checking
+        the getter fun:300 [WIRELESSBASIC] in the router-xml-file), (2) prints out a
+        progress bar and (3) prints out if the process was successful.
+        """
+        router_settings = None
+
+        def print_progress_bar(progress, total, postfix=""):
+            progress = total if progress > total else progress
+            per_progress = int(progress / total * 100)
+            postfix = f"[{postfix}]" if postfix != "" else ""
+            print(f"\r|{'█' * progress}{'-' * (total - progress)}| {per_progress}%, {progress}sec\t{postfix}", end="")
+
+        progress = 0
+        total = 24
+        bln_changes = True
+        start_time = time.time()
+        changes = ""
+        if debug:
+            print(f"\n--- WAITING FOR ROUTER TO UPDATE ---")
+        while progress < total and bln_changes is True:
+            progress = int(time.time() - start_time)
+            if debug:
+                print_progress_bar(progress, total, changes)
+            time.sleep(3)
+            try:
+                router_settings = self.wifi_settings
+                bln_changes, changes = self.__compare_wifi_settings(router_settings, new_settings)
+            except Exception as e:
+                changes = str(e)
+        if debug:
+            if not bln_changes:
+                print(f"\n\n--- ROUTER SUCESSFULLY UPDATED ALL NEW WIFI SETTINGS! ---")
+            else:
+                print(f"\n\n--- CHANGES THAT DID NOT GET SET ---")
+                _, changes = self.__compare_wifi_settings(router_settings, new_settings)
+                print(changes)
+        return bln_changes
+
+    @staticmethod
+    def __update_new_settings(old_settings, new_settings):
+        """
+        Needed for 'self.update_wifi_settings', if the user only changes
+        band_mode or only changes radio_2g.bss_enable or radio_5g.bss_enable.
+        """
+        new = new_settings
+        if old_settings.band_mode != new.band_mode:
+            new.radio_2g.bss_enable = 1 if (new_settings.band_mode & 1) else 2
+            new.radio_5g.bss_enable = 1 if int(f"{new_settings.band_mode:03b}"[1]) else 2
+        elif old_settings.radio_2g.bss_enable != new.radio_2g.bss_enable or \
+                old_settings.radio_5g.bss_enable != new.radio_5g.bss_enable:
+            if new.radio_2g.bss_enable == 1:
+                new.band_mode = 1 if new.radio_5g.bss_enable == 2 else 3
+            elif new.radio_2g.bss_enable == 2:
+                new.band_mode = 2 if new.radio_5g.bss_enable == 1 else 4
+            else:
+                new.band_mode = None
+        return new
+
+    def update_wifi_settings(self, new_settings, debug=True):
+        """
+        New method for updating the wifi settings. Uses either fun:301 or fun:319
+        or both, depending on what the user changed.
+        """
+        old_settings = self.wifi_settings
+        if debug:
+            print(f"\n--- SETTINGS BEFORE UPDATING ---:")
+            print(str(old_settings))
+
+        new_settings = self.__update_new_settings(old_settings, new_settings)
+
+        if debug:
+            print(f"\n--- CHANGES THAT SHOULD BE SET ---")
+        _, changes = self.__compare_wifi_settings(old_settings, new_settings)
+        if debug:
+            print(changes)
+
+        configuration_page = ['bss_enable', 'ssid', 'hidden', 'pre_shared_key', 're_key', 'wpa_algorithm']
+        signal_page = ['band_mode', 'bandwidth', 'tx_mode', 'channel', 'smart_wifi']
+        config_page_update = any(e in str(changes) for e in configuration_page)
+        signal_page_update = any(e in str(changes) for e in signal_page)
+
+        # both_pages also checks if both wifi pages (signal and configuration) are not
+        # changed, so that it request fun:301 and fun:319 for settings changes that
+        # cannot be set
+        both_pages = (config_page_update and signal_page_update) or \
+                     (not config_page_update and not signal_page_update)
+        if both_pages:
+            self.__set_wifi_settings(new_settings, SetFunction.WIFI_SIGNAL, debug)
+        elif config_page_update and not signal_page_update:
+            self.__set_wifi_settings(new_settings, SetFunction.WIFI_CONFIGURATION, debug)
+        elif not config_page_update and signal_page_update:
+            self.__set_wifi_settings(new_settings, SetFunction.WIFI_SIGNAL, debug)
+        not_updated = self.__check_router_status(new_settings, debug)
+
+        if both_pages and not_updated:
+            self.__set_wifi_settings(new_settings, SetFunction.WIFI_CONFIGURATION, debug)
+            self.__check_router_status(new_settings, debug)
+
+    def turn_on_2g(self, debug=False):
+        settings = self.wifi_settings
+        settings.radio_2g.bss_enable = 1
+        self.update_wifi_settings(settings, debug)
+
+    def turn_off_2g(self, debug=False):
+        settings = self.wifi_settings
+        settings.radio_2g.bss_enable = 2
+        self.update_wifi_settings(settings, debug)
+
+    def turn_on_5g(self, debug=False):
+        settings = self.wifi_settings
+        settings.radio_5g.bss_enable = 1
+        self.update_wifi_settings(settings, debug)
+
+    def turn_off_5g(self, debug=False):
+        settings = self.wifi_settings
+        settings.radio_5g.bss_enable = 2
+        self.update_wifi_settings(settings, debug)
+
+    def turn_off(self, debug=False):
+        settings = self.wifi_settings
+        settings.band_mode = 4
+        self.update_wifi_settings(settings, debug)
 
 
 class DHCPSettings:
