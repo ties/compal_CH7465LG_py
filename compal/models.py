@@ -3,23 +3,33 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+@dataclass
+class BandSetting():
+    radio: Optional[int] = None
+    bss_enable: Optional[int] = None
+    ssid: Optional[str] = None
+    hidden: Optional[str] = None
+    bandwidth: Optional[int] = None
+    tx_rate: Optional[int] = None
+    tx_mode: Optional[int] = None
+    security: Optional[int] = None
+    multicast_rate: Optional[int] = None
+    channel: Optional[int] = None
+    pre_shared_key: Optional[str] = None
+    re_key: Optional[str] = None
+    wpa_algorithm: Optional[int] = None
+
 
 @dataclass
-class BandSetting:
-    mode: Optional[str] = None
-    ssid: Optional[str] = None
-    bss_enable: Optional[str] = None
-    radio: Optional[str] = None
-    bandwidth: Optional[str] = None
-    tx_mode: Optional[str] = None
-    multicast_rate: Optional[str] = None
-    hidden: Optional[str] = None
-    pre_shared_key: Optional[str] = None
-    tx_rate: Optional[str] = None
-    re_key: Optional[str] = None
-    channel: Optional[str] = None
-    security: Optional[str] = None
-    wpa_algorithm: Optional[str] = None
+class RadioSettings():
+    nv_country: Optional[int] = None
+    band_mode: Optional[int] = None
+    channel_range: Optional[int] = None
+    bss_coexistence: Optional[int] = None
+    son_admin_status: Optional[int] = None
+    smart_wifi: Optional[int] = None
+    radio_2g: Optional[BandSetting] = None
+    radio_5g: Optional[BandSetting] = None
 
 
 class FilterAction(Enum):
@@ -62,15 +72,6 @@ class Proto(Enum):
     tcp = 1
     udp = 2
     both = 3
-
-
-@dataclass
-class RadioSettings:
-    bss_coexistence: Optional[str] = None
-    radio_2g: Optional[str] = None
-    radio_5g: Optional[str] = None
-    nv_country: Optional[str] = None
-    channel_range: Optional[str] = None
 
 
 class TimerMode(Enum):
