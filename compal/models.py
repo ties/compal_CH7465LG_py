@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+
 @dataclass
-class BandSetting():
+class BandSetting:
     radio: Optional[int] = None
     bss_enable: Optional[int] = None
     ssid: Optional[str] = None
@@ -21,7 +22,7 @@ class BandSetting():
 
 
 @dataclass
-class RadioSettings():
+class RadioSettings:
     nv_country: Optional[int] = None
     band_mode: Optional[int] = None
     channel_range: Optional[int] = None
