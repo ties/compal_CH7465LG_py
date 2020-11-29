@@ -33,6 +33,27 @@ class RadioSettings:
     radio_5g: Optional[BandSetting] = None
 
 
+@dataclass
+class InterfaceGuestNetworkSettings:
+    # read-only fields
+    radio: str
+    guest_mac: str
+    # editable-fields
+    enable: Optional[int] = None
+    ssid: Optional[str] = None
+    hidden: Optional[int] = None
+    re_key: Optional[int] = None
+    security: Optional[int] = None
+    pre_shared_key: Optional[str] = None
+    wpa_algorithm: Optional[int] = None
+
+
+@dataclass
+class GuestNetworkSettings:
+    guest_networks_2g: list[InterfaceGuestNetworkSettings] = None
+    guest_networks_5g: list[InterfaceGuestNetworkSettings] = None
+
+
 class FilterAction(Enum):
     """
     Filter action, used by internet access filters
