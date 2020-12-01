@@ -1,7 +1,7 @@
 """Objects used by CH7465LG"""
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 
 @dataclass
@@ -50,8 +50,8 @@ class InterfaceGuestNetworkSettings:
 
 @dataclass
 class GuestNetworkSettings:
-    guest_networks_2g: list[InterfaceGuestNetworkSettings] = None
-    guest_networks_5g: list[InterfaceGuestNetworkSettings] = None
+    guest_networks_2g: List[InterfaceGuestNetworkSettings] = None
+    guest_networks_5g: List[InterfaceGuestNetworkSettings] = None
 
 
 class FilterAction(Enum):

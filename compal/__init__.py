@@ -949,38 +949,39 @@ class WifiGuestNetworkSettings(object):
         return etree.fromstring(xml_content, parser=self.parser)
 
     @staticmethod
-    def band_guest_networks(xml, band):
+    def __xml_value(interface, attr, coherce=True):
+        """
+        'XmlValue' of an interface
+
+        Coherce the value if requested. First the value is parsed as an
+        integer, if this fails it is returned as a string.
+        """
+        val = interface.find(attr).text
+        try:  # Try to coherce to int. If it fails, return string
+            if not coherce:
+                return val
+            return int(val)
+        except (TypeError, ValueError):
+            return val
+
+    @staticmethod
+    def __band_guest_networks(xml, band):
         """
         Get the wifi guest network settings for the given band (2g, 5g)
         """
         assert band in ("2g", "5g",)
 
         all_interfaces = list()
-        interfaces = xml.iter("Interface" + ("" if band == "2g" else band.upper()))
+        interfaces = xml.iter("Interface" + ("" if band == "2g" else "5G"))
         for interface in interfaces:
-            def xml_value(attr, coherce=True):
-                """
-                'XmlValue'
-
-                Coherce the value if requested. First the value is parsed as an
-                integer, if this fails it is returned as a string.
-                """
-                val = interface.find(attr).text
-                try:  # Try to coherce to int. If it fails, return string
-                    if not coherce:
-                        return val
-                    return int(val)
-                except (TypeError, ValueError):
-                    return val
-
             def guest_xv(attr, coherce=True):
                 """
                 xml value for the given band
                 """
                 try:
-                    return xml_value(f"{attr}{band.upper()}", coherce)
+                    return WifiGuestNetworkSettings.__xml_value(interface, f"{attr}{band.upper()}", coherce)
                 except AttributeError:
-                    return xml_value(f"{attr}{band}", coherce)
+                    return WifiGuestNetworkSettings.__xml_value(interface, f"{attr}{band}", coherce)
 
             all_interfaces.append(InterfaceGuestNetworkSettings(
                 radio=band,
@@ -1002,8 +1003,8 @@ class WifiGuestNetworkSettings(object):
         Read the wifi guest network settings
         """
         xml = self.wifi_guest_network_settings_xml
-        guest_networks_2g = WifiGuestNetworkSettings.band_guest_networks(xml, "2g")
-        guest_networks_5g = WifiGuestNetworkSettings.band_guest_networks(xml, "5g")
+        guest_networks_2g = WifiGuestNetworkSettings.__band_guest_networks(xml, "2g")
+        guest_networks_5g = WifiGuestNetworkSettings.__band_guest_networks(xml, "5g")
 
         return GuestNetworkSettings(
             guest_networks_2g,
@@ -1063,10 +1064,9 @@ class WifiGuestNetworkSettings(object):
 
         total = 24
         bln_changes = True
-        start_time = time.time()
         changes = ""
         if debug:
-            print(f"\n--- WAITING FOR ROUTER TO UPDATE ---")
+            print("\n--- WAITING FOR ROUTER TO UPDATE ---")
         while progress < total and bln_changes is True:
             time.sleep(3)
             if debug:
@@ -1091,8 +1091,10 @@ class WifiGuestNetworkSettings(object):
         """
         Method for updating the wifi guest network settings. Uses fun:308.
         """
-        assert 0 <= interface_index < (len(new_guest_network_settings.guest_networks_2g) and
-                                       len(new_guest_network_settings.guest_networks_5g))
+        len_2g_list = len(new_guest_network_settings.guest_networks_2g)
+        len_5g_list = len(new_guest_network_settings.guest_networks_5g)
+        assert len_2g_list == len_5g_list
+        assert 0 <= interface_index < len_2g_list
 
         def transform_interface(interface_settings):
             out = []
