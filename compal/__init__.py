@@ -803,7 +803,7 @@ class WifiSettings(object):
         start_time = time.time()
         changes = ""
         if debug:
-            print(f"\n--- WAITING FOR ROUTER TO UPDATE ---")
+            print("\n--- WAITING FOR ROUTER TO UPDATE ---")
         while progress < total and bln_changes is True:
             progress = int(time.time() - start_time)
             if debug:
@@ -818,9 +818,9 @@ class WifiSettings(object):
                 changes = str(e)
         if debug:
             if not bln_changes:
-                print(f"\n\n--- ROUTER SUCESSFULLY UPDATED ALL NEW WIFI SETTINGS! ---")
+                print("\n\n--- ROUTER SUCESSFULLY UPDATED ALL NEW WIFI SETTINGS! ---")
             else:
-                print(f"\n\n--- CHANGES THAT DID NOT GET SET ---")
+                print("\n\n--- CHANGES THAT DID NOT GET SET ---")
                 _, changes = self.__compare_wifi_settings(router_settings, new_settings)
                 print(changes)
         return bln_changes
@@ -856,11 +856,11 @@ class WifiSettings(object):
         """
         old_settings = self.wifi_settings
         if debug:
-            print(f"\n--- SETTINGS BEFORE UPDATING ---:")
+            print("\n--- SETTINGS BEFORE UPDATING ---:")
             print(str(old_settings))
 
         if debug:
-            print(f"\n--- CHANGES THAT SHOULD BE SET ---")
+            print("\n--- CHANGES THAT SHOULD BE SET ---")
         _, changes = self.__compare_wifi_settings(old_settings, new_settings)
         if debug:
             print(changes)
@@ -1080,9 +1080,9 @@ class WifiGuestNetworkSettings(object):
                 changes = str(e)
         if debug:
             if not bln_changes:
-                print(f"\n\n--- ROUTER SUCESSFULLY UPDATED ALL NEW WIFI SETTINGS! ---")
+                print("\n\n--- ROUTER SUCESSFULLY UPDATED ALL NEW WIFI SETTINGS! ---")
             else:
-                print(f"\n\n--- CHANGES THAT DID NOT GET SET ---")
+                print("\n\n--- CHANGES THAT DID NOT GET SET ---")
                 _, changes = self.__compare_wifi_settings(router_settings, new_guest_network_settings, interface_index)
                 print(changes)
         return bln_changes
