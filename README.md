@@ -24,6 +24,12 @@ code of these components, to an e-mail address on the Compal site, have not been
 [0]: https://fccid.io/UIDTG2492
 [1]: https://www.dslreports.com/forum/r31079834-ALL-SB6190-is-a-terrible-modem-Intel-Puma-6-MaxLinear-mistake
 
+Changelog
+---------
+
+### 0.3.0:
+  * Guest network settings added by @frimtec.
+
 Security
 --------
 A security evaluation of the Connect Box was [posted](https://packetstormsecurity.com/files/137996/compalch7465lglc-bypassexec.txt)
