@@ -15,6 +15,7 @@ graft .github
 
 exclude requirements.txt requirements_test.txt
 exclude pyproject.toml
+exclude docs/**/*.pdf docs/**/*.jpg docs/**/*.JPG
 
 exclude venv
 
