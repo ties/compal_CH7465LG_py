@@ -54,6 +54,7 @@ stages:
     - script: |
         . venv/bin/activate
 
+        pip install -r requirements_test.txt
         pip install pytest pytest-azurepipelines pytest-cov pytest-xdist
         pytest --cov compal --cov-report html -qq -o console_output_style=count -p no:sugar tests
       displayName: 'pytest'

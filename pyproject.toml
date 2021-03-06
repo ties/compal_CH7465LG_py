@@ -27,4 +27,4 @@ use_parentheses = true
 line_length = 88
 
 [settings]
-known_third_party = ["lxml", "requests", "setuptools"]
+known_third_party = ["lxml", "requests", "responses", "setuptools"]
