@@ -12,7 +12,7 @@ with open(os.path.join(here, "README.md"), "rb") as f:
 
 setup(
     name="compal",
-    version="0.3.0",
+    version="0.3.1",
     author="Ties de Kock",
     author_email="ties@tiesdekock.nl",
     description="Compal CH7465LG/Ziggo Connect Box client",

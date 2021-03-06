@@ -19,10 +19,13 @@ resources:
   containers:
   - container: py37
     image: python:3.7
-    
+
   - container: py38
     image: python:3.8
-    
+
+  - container: py39
+    image: python:3.9
+
 stages:
 - stage: 'Test'
   jobs:
@@ -36,6 +39,8 @@ stages:
           containerResource: py37
         Python38:
           containerResource: py38
+        Python39:
+          containerResource: py39
 
     container: $[ variables['containerResource']]
 
@@ -74,8 +79,8 @@ stages:
       vmImage: 'ubuntu-latest'
     strategy:
       matrix:
-        Python37:
-          containerResource: py37
+        Python39:
+          containerResource: py39
     container: $[ variables['containerResource']]
 
     steps:
