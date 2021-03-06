@@ -1,6 +1,7 @@
 """
 Client for the Compal CH7465LG/Ziggo Connect box cable modem
 """
+import inspect
 import io
 import itertools
 import logging
@@ -17,13 +18,13 @@ from .functions import GetFunction, SetFunction
 from .models import (
     BandSetting,
     FilterAction,
+    GuestNetworkSettings,
+    InterfaceGuestNetworkSettings,
     NatMode,
     PortForward,
     Proto,
     RadioSettings,
     TimerMode,
-    InterfaceGuestNetworkSettings,
-    GuestNetworkSettings,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -207,7 +208,14 @@ class Compal:
             else:
                 raise ValueError("Login failed for unknown reason!")
 
-        tokens = urllib.parse.parse_qs(res.text)
+        def parse_response(text):
+            # As per python 3.9.2 parse_qs does not split on ';' by default
+            if "separator" in inspect.signature(urllib.parse.parse_qs).parameters:
+                return urllib.parse.parse_qs(text, separator=";")
+            else:
+                return urllib.parse.parse_qs(text)
+
+        tokens = parse_response(res.text)
 
         token_sids = tokens.get("SID")
         if not token_sids:
