@@ -13,6 +13,9 @@ Compal does not provide information about the hardware. The modem has no FCC reg
 However, the related Arris TG2492 modem was submitted to the FCC. The FCC documents for this
 modem are [available][0]. Some interesting documents (internal photos) have been mirrored to
 `docs/fcc`.
+danman [performed][2] an (excellent) analysis of the modem where the procedure for extracting
+the content of the firmware and modifying it is discussed. This writeup also examines the
+DOCSIS certificates used.
 
 The modem seems to be based on the Intel Puma 6 chipset. There is a long thead on (perceived)
 performance problems caused by jitter on DSLReports. See [[ALL] SB6190 is a terrible modem - Intel Puma 6 / MaxLinear mistake][1]
@@ -23,6 +26,7 @@ code of these components, to an e-mail address on the Compal site, have not been
 
 [0]: https://fccid.io/UIDTG2492
 [1]: https://www.dslreports.com/forum/r31079834-ALL-SB6190-is-a-terrible-modem-Intel-Puma-6-MaxLinear-mistake
+[2]: https://blog.danman.eu/about-adding-a-static-route-to-my-docsis-modem/
 
 Changelog
 ---------
