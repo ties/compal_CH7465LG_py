@@ -5,6 +5,16 @@ from typing import Optional, List
 
 
 @dataclass
+class SystemInfo:
+    docsis_mode: Optional[str] = None
+    hardware_version: Optional[str] = None
+    mac_address: Optional[str] = None
+    serial_number: Optional[str] = None
+    uptime: Optional[int] = None
+    network_access: Optional[str] = None
+
+
+@dataclass
 class BandSetting:
     radio: Optional[int] = None
     bss_enable: Optional[int] = None

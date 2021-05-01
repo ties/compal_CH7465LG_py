@@ -5,9 +5,11 @@ import inspect
 import io
 import itertools
 import logging
+import re
 import time
 import urllib
 from collections import OrderedDict
+from datetime import timedelta
 from enum import Enum
 from xml.dom import minidom
 
@@ -24,6 +26,7 @@ from .models import (
     PortForward,
     Proto,
     RadioSettings,
+    SystemInfo,
     TimerMode,
 )
 
@@ -227,6 +230,50 @@ class Compal:
         self.session.cookies.update({"SID": token_sid})
 
         return res
+
+    def system_info(self):
+        """
+        Get system information
+        """
+        system_info = SystemInfo()
+
+        parser = etree.XMLParser(recover=True)
+        res = self.xml_getter(GetFunction.CM_SYSTEM_INFO, {})
+        xml = etree.fromstring(res.content, parser=parser)
+
+        cm_docsis_mode = xml.find("cm_docsis_mode")
+        if cm_docsis_mode is not None:
+            system_info.docsis_mode = cm_docsis_mode.text
+
+        cm_hardware_version = xml.find("cm_hardware_version")
+        if cm_hardware_version is not None:
+            system_info.hardware_version = cm_hardware_version.text
+
+        cm_mac_addr = xml.find("cm_mac_addr")
+        if cm_mac_addr is not None:
+            system_info.mac_address = cm_mac_addr.text
+
+        cm_serial_number = xml.find("cm_serial_number")
+        if cm_serial_number is not None:
+            system_info.serial_number = cm_serial_number.text
+
+        cm_system_uptime = xml.find("cm_system_uptime")
+        if cm_system_uptime is not None:
+            match = re.match(
+                r"^(\d+)day(?:\(s\))?(\d+)h?\:(\d+)m?\:(\d+)s?$", cm_system_uptime.text
+            )
+            system_info.uptime = timedelta(
+                days=int(match[1]),
+                hours=int(match[2]),
+                minutes=int(match[3]),
+                seconds=int(match[4]),
+            )
+
+        cm_network_access = xml.find("cm_network_access")
+        if cm_network_access is not None:
+            system_info.network_access = cm_network_access.text
+
+        return system_info
 
     def reboot(self):
         """
