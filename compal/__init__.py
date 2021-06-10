@@ -1083,120 +1083,29 @@ class WifiGuestNetworkSettings(object):
     @property
     def wifi_guest_network_settings(self):
         """
-        Read the wifi guest network settings
+        Read the current wifi guest network settings for all wifi bands (2g and 5g).
         """
         xml = self.wifi_guest_network_settings_xml
-        guest_networks_2g = WifiGuestNetworkSettings.__band_guest_networks(xml, "2g")
-        guest_networks_5g = WifiGuestNetworkSettings.__band_guest_networks(xml, "5g")
+        # the compal modem returns 7 entries per band, the only used element is index 2
+        one_and_only_relevant_index = 2
+        guest_networks_2g = WifiGuestNetworkSettings.__band_guest_networks(xml, "2g")[one_and_only_relevant_index]
+        guest_networks_5g = WifiGuestNetworkSettings.__band_guest_networks(xml, "5g")[one_and_only_relevant_index]
 
         return GuestNetworkSettings(
             guest_networks_2g,
             guest_networks_5g,
         )
 
-    @staticmethod
-    def __compare_wifi_settings(old_settings, new_settings, interface_index, changes):
-        """
-        Compare two settings objects for changes and
-        return:
-            bln_changes: True if there were changes
-            changes: Python dict that contains the changes
-        """
-
-        def iterate_changes(old_settings, new_settings, changes):
-            for attr, old_value in old_settings.__dict__.items():
-                if isinstance(old_value, BandSetting):
-                    changes.update({attr: {}})
-                    iterate_changes(
-                        getattr(old_settings, attr),
-                        getattr(new_settings, attr),
-                        changes[attr],
-                    )
-                else:
-                    new_value = getattr(new_settings, attr)
-                    if old_value != new_value:
-                        changes.update({attr: f"{old_value} -> {new_value}"})
-                        bln_changes[0] = True
-
-        changes = {}
-        bln_changes = [False]
-        iterate_changes(
-            old_settings.guest_networks_2g[interface_index],
-            new_settings.guest_networks_2g[interface_index],
-            changes,
-        )
-        iterate_changes(
-            old_settings.guest_networks_5g[interface_index],
-            new_settings.guest_networks_5g[interface_index],
-            changes,
-        )
-        return bln_changes[0], changes
-
-    def __check_router_status(self, new_guest_network_settings, interface_index, debug):
-        """
-        Checks if (1) the new user settings were changed in the router (via checking
-        the getter fun:307 [WIRELESSGUESTNETWORK] in the router-xml-file), (2) prints out a
-        progress bar and (3) prints out if the process was successful.
-        """
-        router_settings = None
-
-        progress = 0
-
-        def print_progress_bar(progress, total, postfix=""):
-            progress = total if progress > total else progress
-            per_progress = int(progress / total * 100)
-            postfix = f"[{postfix}]" if postfix != "" else ""
-            print(
-                f"\r|{'█' * progress}{'-' * (total - progress)}| {per_progress}%, {progress}sec\t{postfix}",
-                end="",
-            )
-
-        total = 24
-        bln_changes = True
-        changes = ""
-        if debug:
-            print("\n--- WAITING FOR ROUTER TO UPDATE ---")
-        while progress < total and bln_changes is True:
-            time.sleep(3)
-            if debug:
-                print_progress_bar(progress, total, changes)
-            try:
-                router_settings = self.wifi_guest_network_settings
-                bln_changes, changes = self.__compare_wifi_settings(
-                    router_settings,
-                    new_guest_network_settings,
-                    interface_index,
-                    changes,
-                )
-            except Exception as e:
-                changes = str(e)
-        if debug:
-            if not bln_changes:
-                print("\n\n--- ROUTER SUCESSFULLY UPDATED ALL NEW WIFI SETTINGS! ---")
-            else:
-                print("\n\n--- CHANGES THAT DID NOT GET SET ---")
-                _, changes = self.__compare_wifi_settings(
-                    router_settings, new_guest_network_settings, interface_index
-                )
-                print(changes)
-        return bln_changes
-
-    def update_interface_guest_network_settings(
-        self, new_guest_network_settings, interface_index, debug=True
-    ):
+    def update_wifi_guest_network_settings(self, new_guest_network_settings):
         """
         Method for updating the wifi guest network settings. Uses fun:308.
+        The given new_guest_network_settings are applied to all currently enabled wifi bands.
+        Requires at least firmware CH7465LG-NCIP-6.15.30-1p3-1-NOSH.
         """
-        len_2g_list = len(new_guest_network_settings.guest_networks_2g)
-        len_5g_list = len(new_guest_network_settings.guest_networks_5g)
-        assert len_2g_list == len_5g_list
-        assert 0 <= interface_index < len_2g_list
-
         def transform_interface(interface_settings):
             out = []
             out.extend(
                 [
-                    ("Interface", interface_index + 1),
                     ("Enable", interface_settings.enable),
                     ("Ssid", interface_settings.ssid),
                     ("Hiden", interface_settings.hidden),
@@ -1208,26 +1117,11 @@ class WifiGuestNetworkSettings(object):
             )
 
             # Prefix 'wl', Postfix the band
-            return [(f"wl{k}{interface_settings.radio}", v) for (k, v) in out]
+            return [(f"wl{k}", v) for (k, v) in out]
 
-        out_s = []  # change
-        for item_2g, item_5g in zip(
-            transform_interface(
-                new_guest_network_settings.guest_networks_2g[interface_index]
-            ),
-            transform_interface(
-                new_guest_network_settings.guest_networks_5g[interface_index]
-            ),
-        ):
-            out_s.append(item_2g)
-            out_s.append(item_5g)
-
-        out_settings = OrderedDict(out_s)
+        out_settings = OrderedDict(transform_interface(new_guest_network_settings))
         self.modem.xml_setter(
             SetFunction.WIFI_GUEST_NETWORK_CONFIGURATION, out_settings
-        )
-        return self.__check_router_status(
-            new_guest_network_settings, interface_index, debug
         )
 
 

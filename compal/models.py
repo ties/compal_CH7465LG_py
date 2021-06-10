@@ -60,8 +60,8 @@ class InterfaceGuestNetworkSettings:
 
 @dataclass
 class GuestNetworkSettings:
-    guest_networks_2g: List[InterfaceGuestNetworkSettings] = None
-    guest_networks_5g: List[InterfaceGuestNetworkSettings] = None
+    guest_networks_2g: InterfaceGuestNetworkSettings = None
+    guest_networks_5g: InterfaceGuestNetworkSettings = None
 
 
 class FilterAction(Enum):
