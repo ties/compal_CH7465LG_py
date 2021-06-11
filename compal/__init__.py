@@ -20,8 +20,9 @@ from .functions import GetFunction, SetFunction
 from .models import (
     BandSetting,
     FilterAction,
+    GuestNetworkEnabling,
+    GuestNetworkProperties,
     GuestNetworkSettings,
-    InterfaceGuestNetworkSettings,
     NatMode,
     PortForward,
     Proto,
@@ -1037,89 +1038,63 @@ class WifiGuestNetworkSettings(object):
         except (TypeError, ValueError):
             return val
 
-    @staticmethod
-    def __band_guest_networks(xml, band):
-        """
-        Get the wifi guest network settings for the given band (2g, 5g)
-        """
-        assert band in (
-            "2g",
-            "5g",
-        )
-
-        all_interfaces = list()
-        interfaces = xml.iter("Interface" + ("" if band == "2g" else "5G"))
-        for interface in interfaces:
-
-            def guest_xv(attr, coherce=True):
-                """
-                xml value for the given band
-                """
-                try:
-                    return WifiGuestNetworkSettings.__xml_value(
-                        interface, f"{attr}{band.upper()}", coherce
-                    )
-                except AttributeError:
-                    return WifiGuestNetworkSettings.__xml_value(
-                        interface, f"{attr}{band}", coherce
-                    )
-
-            all_interfaces.append(
-                InterfaceGuestNetworkSettings(
-                    radio=band,
-                    enable=guest_xv("Enable"),
-                    ssid=guest_xv("BSSID"),
-                    guest_mac=guest_xv("GuestMac"),
-                    hidden=guest_xv("HideNetwork"),
-                    re_key=guest_xv("GroupRekeyInterval"),
-                    security=guest_xv("SecurityMode"),
-                    pre_shared_key=guest_xv("PreSharedKey"),
-                    wpa_algorithm=guest_xv("WpaAlgorithm"),
-                )
-            )
-
-        return all_interfaces
-
     @property
     def wifi_guest_network_settings(self):
         """
         Read the current wifi guest network settings for all wifi bands (2g and 5g).
         """
         xml = self.wifi_guest_network_settings_xml
+
         # the compal modem returns 7 entries per band, the only used element is index 2
         one_and_only_relevant_index = 2
-        guest_networks_2g = WifiGuestNetworkSettings.__band_guest_networks(xml, "2g")[one_and_only_relevant_index]
-        guest_networks_5g = WifiGuestNetworkSettings.__band_guest_networks(xml, "5g")[one_and_only_relevant_index]
+
+        interfaces = {
+            '2g': list(xml.iter("Interface"))[one_and_only_relevant_index],
+            '5g': list(xml.iter("Interface5G"))[one_and_only_relevant_index],
+        }
+
+        def guest_xv(band, attr, coherce=True):
+            """
+            xml value for the given band
+            """
+            try:
+                return WifiGuestNetworkSettings.__xml_value(
+                    interfaces[band], f"{attr}{band.upper()}", coherce
+                )
+            except AttributeError:
+                return WifiGuestNetworkSettings.__xml_value(
+                    interfaces[band], f"{attr}{band}", coherce
+                )
 
         return GuestNetworkSettings(
-            guest_networks_2g,
-            guest_networks_5g,
+            GuestNetworkEnabling(guest_xv('2g', "Enable") == 1, guest_xv('2g', "GuestMac")),
+            GuestNetworkEnabling(guest_xv('5g', "Enable") == 1, guest_xv('5g', "GuestMac")),
+            GuestNetworkProperties(
+                guest_xv('2g', "BSSID"),
+                guest_xv('2g', "HideNetwork"),
+                guest_xv('2g', "GroupRekeyInterval"),
+                guest_xv('2g', "SecurityMode"),
+                guest_xv('2g', "PreSharedKey"),
+                guest_xv('2g', "WpaAlgorithm"),
+            )
         )
 
-    def update_wifi_guest_network_settings(self, new_guest_network_settings):
+    def update_wifi_guest_network_settings(self, properties, enable):
         """
         Method for updating the wifi guest network settings. Uses fun:308.
-        The given new_guest_network_settings are applied to all currently enabled wifi bands.
+        The given properties are applied to all wifi bands (2g and 5g).
+        The enabling has only effect on wifi bands that are currently switched on.
         Requires at least firmware CH7465LG-NCIP-6.15.30-1p3-1-NOSH.
         """
-        def transform_interface(interface_settings):
-            out = []
-            out.extend(
-                [
-                    ("Enable", interface_settings.enable),
-                    ("Ssid", interface_settings.ssid),
-                    ("Hiden", interface_settings.hidden),
-                    ("Rekey", interface_settings.re_key),
-                    ("Security", interface_settings.security),
-                    ("PSkey", interface_settings.pre_shared_key),
-                    ("Wpaalg", interface_settings.wpa_algorithm),
-                ]
-            )
-
-            # Prefix 'wl', Postfix the band
-            return [(f"wl{k}", v) for (k, v) in out]
-
-        out_settings = OrderedDict(transform_interface(new_guest_network_settings))
+        out_settings = OrderedDict([
+            ("wlEnable", 1 if enable else 2),
+            ("wlSsid", properties.ssid),
+            ("wlHiden", properties.hidden),
+            ("wlRekey", properties.re_key),
+            ("wlSecurity", properties.security),
+            ("wlPSkey", properties.pre_shared_key),
+            ("wlWpaalg", properties.wpa_algorithm),
+        ])
         self.modem.xml_setter(
             SetFunction.WIFI_GUEST_NETWORK_CONFIGURATION, out_settings
         )
