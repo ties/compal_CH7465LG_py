@@ -1049,8 +1049,8 @@ class WifiGuestNetworkSettings(object):
         one_and_only_relevant_index = 2
 
         interfaces = {
-            '2g': list(xml.iter("Interface"))[one_and_only_relevant_index],
-            '5g': list(xml.iter("Interface5G"))[one_and_only_relevant_index],
+            "2g": list(xml.iter("Interface"))[one_and_only_relevant_index],
+            "5g": list(xml.iter("Interface5G"))[one_and_only_relevant_index],
         }
 
         def guest_xv(band, attr, coherce=True):
@@ -1067,16 +1067,20 @@ class WifiGuestNetworkSettings(object):
                 )
 
         return GuestNetworkSettings(
-            GuestNetworkEnabling(guest_xv('2g', "Enable") == 1, guest_xv('2g', "GuestMac")),
-            GuestNetworkEnabling(guest_xv('5g', "Enable") == 1, guest_xv('5g', "GuestMac")),
+            GuestNetworkEnabling(
+                guest_xv("2g", "Enable") == 1, guest_xv("2g", "GuestMac")
+            ),
+            GuestNetworkEnabling(
+                guest_xv("5g", "Enable") == 1, guest_xv("5g", "GuestMac")
+            ),
             GuestNetworkProperties(
-                guest_xv('2g', "BSSID"),
-                guest_xv('2g', "HideNetwork"),
-                guest_xv('2g', "GroupRekeyInterval"),
-                guest_xv('2g', "SecurityMode"),
-                guest_xv('2g', "PreSharedKey"),
-                guest_xv('2g', "WpaAlgorithm"),
-            )
+                guest_xv("2g", "BSSID"),
+                guest_xv("2g", "HideNetwork"),
+                guest_xv("2g", "GroupRekeyInterval"),
+                guest_xv("2g", "SecurityMode"),
+                guest_xv("2g", "PreSharedKey"),
+                guest_xv("2g", "WpaAlgorithm"),
+            ),
         )
 
     def update_wifi_guest_network_settings(self, properties, enable):
@@ -1086,15 +1090,17 @@ class WifiGuestNetworkSettings(object):
         The enabling has only effect on wifi bands that are currently switched on.
         Requires at least firmware CH7465LG-NCIP-6.15.30-1p3-1-NOSH.
         """
-        out_settings = OrderedDict([
-            ("wlEnable", 1 if enable else 2),
-            ("wlSsid", properties.ssid),
-            ("wlHiden", properties.hidden),
-            ("wlRekey", properties.re_key),
-            ("wlSecurity", properties.security),
-            ("wlPSkey", properties.pre_shared_key),
-            ("wlWpaalg", properties.wpa_algorithm),
-        ])
+        out_settings = OrderedDict(
+            [
+                ("wlEnable", 1 if enable else 2),
+                ("wlSsid", properties.ssid),
+                ("wlHiden", properties.hidden),
+                ("wlRekey", properties.re_key),
+                ("wlSecurity", properties.security),
+                ("wlPSkey", properties.pre_shared_key),
+                ("wlWpaalg", properties.wpa_algorithm),
+            ]
+        )
         self.modem.xml_setter(
             SetFunction.WIFI_GUEST_NETWORK_CONFIGURATION, out_settings
         )
