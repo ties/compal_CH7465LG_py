@@ -44,12 +44,13 @@ class RadioSettings:
 
 
 @dataclass
-class InterfaceGuestNetworkSettings:
-    # read-only fields
-    radio: str
-    guest_mac: str
-    # editable-fields
-    enable: Optional[int] = None
+class GuestNetworkEnabling:
+    enabled: Optional[bool] = None
+    guest_mac: Optional[str] = None
+
+
+@dataclass
+class GuestNetworkProperties:
     ssid: Optional[str] = None
     hidden: Optional[int] = None
     re_key: Optional[int] = None
@@ -60,8 +61,9 @@ class InterfaceGuestNetworkSettings:
 
 @dataclass
 class GuestNetworkSettings:
-    guest_networks_2g: List[InterfaceGuestNetworkSettings] = None
-    guest_networks_5g: List[InterfaceGuestNetworkSettings] = None
+    enabling_2g: GuestNetworkEnabling
+    enabling_5g: GuestNetworkEnabling
+    properties: GuestNetworkProperties
 
 
 class FilterAction(Enum):

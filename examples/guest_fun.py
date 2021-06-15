@@ -20,18 +20,15 @@ def modem_setup(host, passwd):
     guest = WifiGuestNetworkSettings(modem)
     settings = guest.wifi_guest_network_settings
 
-    # Change enabling state of the 3rd (index 2) 2g-interface (the one also editable via the UI)
-    interface_index = 2
-    old_enabling_state = settings.guest_networks_2g[interface_index].enable
-    pprint.pprint('Current GUEST-NETWORK state: ' + ('ON' if old_enabling_state == 1 else 'OFF'))
+    old_enabling_state = settings.enabling_2g.enabled
+    pprint.pprint('Current GUEST-NETWORK state: ' + ('ON' if old_enabling_state else 'OFF'))
 
-    settings.guest_networks_2g[interface_index].enable = 1 if old_enabling_state == 2 else 2
-    guest.update_interface_guest_network_settings(settings, interface_index)
+    guest.update_wifi_guest_network_settings(settings.properties, not old_enabling_state)
 
-    new_enabling_state = guest.wifi_guest_network_settings.guest_networks_2g[interface_index].enable
-    pprint.pprint('New GUEST-NETWORK state: ' + ('ON' if new_enabling_state == 1 else 'OFF'))
-
-    pprint.pprint(guest.wifi_guest_network_settings)
+    settings = guest.wifi_guest_network_settings
+    new_enabling_state = settings.enabling_2g.enabled
+    pprint.pprint('New GUEST-NETWORK state: ' + ('ON' if new_enabling_state else 'OFF'))
+    pprint.pprint(settings)
 
     modem.logout()
 
