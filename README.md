@@ -31,6 +31,9 @@ code of these components, to an e-mail address on the Compal site, have not been
 Changelog
 ---------
 
+### 0.4.0:
+  * Updated guest network settings for firmware [6.15.30-1p3-1-NOSH](https://github.com/ties/compal_CH7465LG_py/pull/32) by @frimtec.
+
 ### 0.3.2:
   * Add [system information methods](https://github.com/ties/compal_CH7465LG_py/pull/28)
 	  by @reitermarkus.
