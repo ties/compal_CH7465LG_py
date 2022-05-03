@@ -46,7 +46,7 @@ class Compal:
         self.router_ip = router_ip
         self.username = username
         self.timeout = timeout
-        self.key = key
+        self.key = key[:31] if key else key
 
         self.session = requests.Session()
         # limit the number of redirects
@@ -74,7 +74,7 @@ class Compal:
         LOGGER.info("Initial setup: english.")
 
         if new_key:
-            self.key = new_key
+            self.key = new_key[:31]
 
         if not self.key:
             raise ValueError("No key/password availalbe")
@@ -203,7 +203,7 @@ class Compal:
         res = self.xml_setter(
             SetFunction.LOGIN,
             OrderedDict(
-                [("Username", self.username), ("Password", key if key else self.key)]
+                [("Username", self.username), ("Password", key[:31] if key else self.key)]
             ),
         )
 
@@ -1386,7 +1386,7 @@ class FuncScanner(object):
     def __init__(self, modem, pos, key):
         self.modem = modem
         self.current_pos = pos
-        self.key = key
+        self.key = key[:31]
         self.last_login = -1
 
     @property
