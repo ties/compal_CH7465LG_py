@@ -1,6 +1,6 @@
 """Objects used by CH7465LG"""
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 from typing import Optional, List
 
 
@@ -66,7 +66,7 @@ class GuestNetworkSettings:
     properties: GuestNetworkProperties
 
 
-class FilterAction(Enum):
+class FilterAction(IntEnum):
     """
     Filter action, used by internet access filters
     """
@@ -76,7 +76,7 @@ class FilterAction(Enum):
     enable = 3
 
 
-class NatMode(Enum):
+class NatMode(IntEnum):
     """
     Values for NAT-Mode
     """
@@ -98,7 +98,7 @@ class PortForward:
     lan_ip: Optional[str] = None
 
 
-class Proto(Enum):
+class Proto(IntEnum):
     """
     protocol (from form): 1 = tcp, 2 = udp, 3 = both
     """
@@ -108,7 +108,7 @@ class Proto(Enum):
     both = 3
 
 
-class TimerMode(Enum):
+class TimerMode(IntEnum):
     """
     Timermodes used for internet access filtering
     """
