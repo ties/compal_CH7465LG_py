@@ -42,8 +42,9 @@ class Compal:
     Basic functionality for the router's API
     """
 
-    def __init__(self, router_ip, key=None, timeout=10):
+    def __init__(self, router_ip, key=None, username = 'admin', timeout=10):
         self.router_ip = router_ip
+        self.username = username
         self.timeout = timeout
         self.key = key
 
@@ -86,7 +87,7 @@ class Compal:
         # Login or change password? Not sure.
         self.xml_setter(
             SetFunction.LOGIN,
-            OrderedDict([("Username", "admin"), ("Password", self.key)]),
+            OrderedDict([("Username", self.username), ("Password", self.key)]),
         )
         # Get current wifi settings (?)
         self.xml_getter(GetFunction.WIRELESSBASIC, {})
@@ -202,7 +203,7 @@ class Compal:
         res = self.xml_setter(
             SetFunction.LOGIN,
             OrderedDict(
-                [("Username", "admin"), ("Password", key if key else self.key)]
+                [("Username", self.username), ("Password", key if key else self.key)]
             ),
         )
 
