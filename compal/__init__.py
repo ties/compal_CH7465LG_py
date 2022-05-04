@@ -46,8 +46,9 @@ class Compal:
     Basic functionality for the router's API
     """
 
-    def __init__(self, router_ip, key=None, username="admin", timeout=10):
+    def __init__(self, router_ip, key=None, send_token=True, username="admin", timeout=10):
         self.router_ip = router_ip
+        self.send_token = send_token
         self.username = username
         self.timeout = timeout
         self.key = key[:31] if key else key
@@ -141,7 +142,8 @@ class Compal:
         (Which is a code smell)
         """
         data = OrderedDict()
-        data["token"] = self.session_token
+        if self.send_token:
+            data["token"] = self.session_token
 
         if "fun" in _data:
             data["fun"] = _data.pop("fun")
