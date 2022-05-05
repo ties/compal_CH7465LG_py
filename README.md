@@ -31,6 +31,9 @@ code of these components, to an e-mail address on the Compal site, have not been
 Changelog
 ---------
 
+### 0.5.0
+  * Added support for get/create/disable/delete IPv6 filter rules by @7FM
+
 ### 0.4.0:
   * Updated guest network settings for firmware [6.15.30-1p3-1-NOSH](https://github.com/ties/compal_CH7465LG_py/pull/32) by @frimtec.
 
