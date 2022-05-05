@@ -20,13 +20,17 @@ from .functions import GetFunction, SetFunction
 from .models import (
     BandSetting,
     FilterAction,
+    FilterIpRange,
     GuestNetworkEnabling,
     GuestNetworkProperties,
     GuestNetworkSettings,
     NatMode,
+    IPv6FilterRule,
+    IPv6FilterRuleProto,
     PortForward,
     Proto,
     RadioSettings,
+    RuleDir,
     SystemInfo,
     TimerMode,
 )
@@ -42,10 +46,14 @@ class Compal:
     Basic functionality for the router's API
     """
 
-    def __init__(self, router_ip, key=None, timeout=10):
+    def __init__(
+        self, router_ip, key=None, send_token=True, username="admin", timeout=10
+    ):
         self.router_ip = router_ip
+        self.send_token = send_token
+        self.username = username
         self.timeout = timeout
-        self.key = key
+        self.key = key[:31] if key else key
 
         self.session = requests.Session()
         # limit the number of redirects
@@ -73,7 +81,7 @@ class Compal:
         LOGGER.info("Initial setup: english.")
 
         if new_key:
-            self.key = new_key
+            self.key = new_key[:31]
 
         if not self.key:
             raise ValueError("No key/password availalbe")
@@ -86,7 +94,7 @@ class Compal:
         # Login or change password? Not sure.
         self.xml_setter(
             SetFunction.LOGIN,
-            OrderedDict([("Username", "admin"), ("Password", self.key)]),
+            OrderedDict([("Username", self.username), ("Password", self.key)]),
         )
         # Get current wifi settings (?)
         self.xml_getter(GetFunction.WIRELESSBASIC, {})
@@ -136,7 +144,8 @@ class Compal:
         (Which is a code smell)
         """
         data = OrderedDict()
-        data["token"] = self.session_token
+        if self.send_token:
+            data["token"] = self.session_token
 
         if "fun" in _data:
             data["fun"] = _data.pop("fun")
@@ -202,7 +211,10 @@ class Compal:
         res = self.xml_setter(
             SetFunction.LOGIN,
             OrderedDict(
-                [("Username", "admin"), ("Password", key if key else self.key)]
+                [
+                    ("Username", self.username),
+                    ("Password", key[:31] if key else self.key),
+                ]
             ),
         )
 
@@ -488,6 +500,7 @@ class Filters(object):
 
     def __init__(self, modem):
         self.modem = modem
+        self.parser = etree.XMLParser(recover=True)
 
     def set_parental_control(
         self,
@@ -568,15 +581,140 @@ class Filters(object):
 
         return self.modem.xml_setter(SetFunction.MACFILTER, {"data": data})
 
-    def set_ipv6_filter_rule(self):
+    def get_ipv6_filter_rules(self):
         """
-        To be integrated...
+        Get the list of IPv6 filter rules for incoming and outgoing traffic
         """
+
+        def r_int(rule, attr):
+            """
+            integer value for rule's child's text
+            """
+            return int(rule.find(attr).text)
+
+        def getFilterRules(direction):
+            """
+            Get the list of IPv6 filter rules for traffic in specified direction
+            """
+            res = self.modem.xml_getter(
+                GetFunction.IPV6FILTERING, OrderedDict([("rule", int(direction))])
+            )
+            xml = etree.fromstring(res.content, parser=self.parser)
+            for rule in xml.findall("instance"):
+                yield IPv6FilterRule(
+                    dir=direction,
+                    idd=r_int(rule, "idd"),
+                    src_addr=rule.find("src_addr").text,
+                    src_prefix=r_int(rule, "src_prefix"),
+                    dst_addr=rule.find("dst_addr").text,
+                    dst_prefix=r_int(rule, "dst_prefix"),
+                    src_sport=r_int(rule, "src_sport"),
+                    src_eport=r_int(rule, "src_eport"),
+                    dst_sport=r_int(rule, "dst_sport"),
+                    dst_eport=r_int(rule, "dst_eport"),
+                    protocol=IPv6FilterRuleProto(r_int(rule, "protocol")),
+                    allow=bool(r_int(rule, "allow")),
+                    enabled=bool(r_int(rule, "enabled")),
+                )
+
+        inRules = getFilterRules(RuleDir.incoming)
+        outRules = getFilterRules(RuleDir.outgoing)
+        return list(inRules), list(outRules)
+
+    def set_ipv6_filter_rule(self, rule):
+        """
+        Add a new IPv6 traffic filter rule
+        """
+
+        def getOrDefault(val, defaultValue):
+            return condGetOrDefault(RuleDir.incoming, val, defaultValue, defaultValue)
+
+        def condGetOrDefault(direction, val, defaultValueIn, defaultValueOut):
+            if direction == RuleDir.incoming:
+                return val if val is not None else defaultValueIn
+            else:
+                return val if val is not None else defaultValueOut
+
+        direction = getOrDefault(rule.dir, RuleDir.incoming)
+        src_prefix = getOrDefault(rule.src_prefix, 128)
+        src_addr = condGetOrDefault(direction, rule.src_addr, "::", None)
+        dst_prefix = getOrDefault(rule.dst_prefix, 128)
+        dst_addr = condGetOrDefault(direction, rule.dst_addr, None, "::")
         params = OrderedDict(
             [
-                ("act", ""),
-                ("dir", ""),
-                ("enabled", ""),
+                ("act", "2"),
+                ("dir", int(direction)),
+                ("enabled", int(getOrDefault(rule.enabled, True))),
+                (
+                    "allow_traffic",
+                    1 - int(condGetOrDefault(direction, rule.allow, True, False)),
+                ),  # 0 actually stands for allowing the traffic.. TODO introduce enum?
+                ("protocol", int(rule.protocol)),
+                ("src_addr", src_addr),
+                ("src_prefix", src_prefix),
+                ("dst_addr", dst_addr),
+                ("dst_prefix", dst_prefix),
+                ("ssport", condGetOrDefault(direction, rule.src_sport, "1", None)),
+                ("seport", condGetOrDefault(direction, rule.src_eport, "65535", None)),
+                ("dsport", condGetOrDefault(direction, rule.dst_sport, None, "1")),
+                ("deport", condGetOrDefault(direction, rule.dst_eport, None, "65535")),
+                ("del", ""),
+                ("idd", ""),
+                (
+                    "sIpRange",
+                    int(
+                        FilterIpRange.all
+                        if src_addr == "::"
+                        else FilterIpRange.range
+                        if src_prefix != 128
+                        else FilterIpRange.single
+                    ),
+                ),
+                (
+                    "dsIpRange",
+                    int(
+                        FilterIpRange.all
+                        if dst_addr == "::"
+                        else FilterIpRange.range
+                        if dst_prefix != 128
+                        else FilterIpRange.single
+                    ),
+                ),
+                ("PortRange", "2"),  # manual port selection
+                (
+                    "TMode",
+                    "0",
+                ),  # No timed rule
+                ("TRule", "0"),  # No timed rule
+            ]
+        )
+        return self.modem.xml_setter(SetFunction.IPV6_FILTER_RULE, params)
+
+    def update_ipv6_filter_rules(
+        self, ruleCount, disableIds={}, deleteIds={}, direction=RuleDir.incoming
+    ):
+        """
+        Update the existing filter set. I.e. disable or delete them.
+        """
+        if ruleCount == 0 or (len(disableIds) == 0 and len(deleteIds)):
+            pass
+
+        def genIddString():
+            return "*".join([str(i) for i in range(1, ruleCount + 1)])
+
+        def genBitfield(ids, matchStr, noMatchStr):
+            return "*".join(
+                [matchStr if i in ids else noMatchStr for i in range(1, ruleCount + 1)]
+            )
+
+        enableBitfield = genBitfield(disableIds, "0", "1")
+        deleteBitfield = genBitfield(deleteIds, "1", "0")
+
+        params = OrderedDict(
+            [
+                ("act", "1"),
+                ("dir", int(direction)),
+                ("enabled", enableBitfield),
                 ("allow_traffic", ""),
                 ("protocol", ""),
                 ("src_addr", ""),
@@ -587,16 +725,32 @@ class Filters(object):
                 ("seport", ""),
                 ("dsport", ""),
                 ("deport", ""),
-                ("del", ""),
-                ("idd", ""),
+                ("del", deleteBitfield),
+                ("idd", genIddString()),
                 ("sIpRange", ""),
                 ("dsIpRange", ""),
                 ("PortRange", ""),
-                ("TMode", ""),
-                ("TRule", ""),
+                ("TMode", "0"),  # No timed rule
+                ("TRule", "0"),  # No timed rule
             ]
         )
         return self.modem.xml_setter(SetFunction.IPV6_FILTER_RULE, params)
+
+    def delete_all_ipv6_filter_rules(self):
+        """
+        Delete all ipv6 filter rules
+        """
+        inRules, outRules = self.get_ipv6_filter_rules()
+        countInRules = len(inRules)
+        self.update_ipv6_filter_rules(
+            countInRules, {}, set(range(1, countInRules + 1)), RuleDir.incoming
+        )
+        countOutRules = len(outRules)
+        self.update_ipv6_filter_rules(
+            countOutRules, {}, set(range(1, countOutRules + 1)), RuleDir.outgoing
+        )
+
+        return inRules, outRules
 
     def set_filter_rule(self):
         """
@@ -1385,7 +1539,7 @@ class FuncScanner(object):
     def __init__(self, modem, pos, key):
         self.modem = modem
         self.current_pos = pos
-        self.key = key
+        self.key = key[:31]
         self.last_login = -1
 
     @property

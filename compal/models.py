@@ -1,6 +1,6 @@
 """Objects used by CH7465LG"""
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 from typing import Optional, List
 
 
@@ -66,7 +66,7 @@ class GuestNetworkSettings:
     properties: GuestNetworkProperties
 
 
-class FilterAction(Enum):
+class FilterAction(IntEnum):
     """
     Filter action, used by internet access filters
     """
@@ -76,13 +76,68 @@ class FilterAction(Enum):
     enable = 3
 
 
-class NatMode(Enum):
+class NatMode(IntEnum):
     """
     Values for NAT-Mode
     """
 
     enabled = 1
     disabled = 2
+
+
+class FilterIpRange(IntEnum):
+    """
+    Filter rule ip range enum
+    """
+
+    all = 0
+    single = 1
+    range = 2
+
+
+class RuleDir(IntEnum):
+    """
+    Filter rule direction
+    """
+
+    incoming = 0
+    outgoing = 1
+
+
+class IPv6FilterRuleProto(IntEnum):
+    """
+    protocol (from form):
+    """
+
+    all = 0
+    udp = 1
+    tcp = 2
+    udp_tcp = 3
+    icmpv6 = 4
+    esp = 5
+    ah = 6
+    gre = 7
+    ipv6encap = 8
+    ipv4encap = 9
+    ipv6fragment = 10
+    l2tp = 11
+
+
+@dataclass
+class IPv6FilterRule:
+    dir: Optional[RuleDir] = None
+    idd: Optional[int] = None
+    src_addr: Optional[str] = None
+    src_prefix: Optional[int] = None
+    dst_addr: Optional[str] = None
+    dst_prefix: Optional[int] = None
+    src_sport: Optional[int] = None  # start port
+    src_eport: Optional[int] = None  # end port
+    dst_sport: Optional[int] = None  # start port
+    dst_eport: Optional[int] = None  # end port
+    protocol: Optional[IPv6FilterRuleProto] = None
+    allow: Optional[bool] = None
+    enabled: Optional[bool] = None
 
 
 @dataclass
@@ -98,7 +153,7 @@ class PortForward:
     lan_ip: Optional[str] = None
 
 
-class Proto(Enum):
+class Proto(IntEnum):
     """
     protocol (from form): 1 = tcp, 2 = udp, 3 = both
     """
@@ -108,7 +163,7 @@ class Proto(Enum):
     both = 3
 
 
-class TimerMode(Enum):
+class TimerMode(IntEnum):
     """
     Timermodes used for internet access filtering
     """
