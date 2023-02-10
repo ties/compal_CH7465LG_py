@@ -31,6 +31,9 @@ code of these components, to an e-mail address on the Compal site, have not been
 Changelog
 ---------
 
+### 0.5.1
+  * Support for hashed (single-sha256) passwords was added by @7FM
+
 ### 0.5.0
   * Added support for get/create/disable/delete IPv6 filter rules by @7FM
 
