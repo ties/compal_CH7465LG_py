@@ -12,6 +12,7 @@ from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
 from xml.dom import minidom
+from hashlib import sha256
 
 import requests
 from lxml import etree
@@ -47,13 +48,20 @@ class Compal:
     """
 
     def __init__(
-        self, router_ip, key=None, send_token=True, username="admin", timeout=10
+        self,
+        router_ip,
+        key=None,
+        send_token=True,
+        send_hash=False,
+        username="admin",
+        timeout=10,
     ):
         self.router_ip = router_ip
         self.send_token = send_token
+        self.send_hash = send_hash
         self.username = username
         self.timeout = timeout
-        self.key = key[:31] if key else key
+        self.key = self.sanitize_key(key)
 
         self.session = requests.Session()
         # limit the number of redirects
@@ -74,14 +82,21 @@ class Compal:
         elif not self.initial_res.url.endswith("common_page/login.html"):
             LOGGER.error("Was not redirected to login page:" " concurrent session?")
 
+    def sanitize_key(self, key):
+        if key:
+            if self.send_hash:
+                key = sha256(key.encode("utf-8")).hexdigest()
+            else:
+                key = key[:31]
+        return key
+
     def initial_setup(self, new_key=None):
         """
         Replay the settings made during initial setup
         """
         LOGGER.info("Initial setup: english.")
 
-        if new_key:
-            self.key = new_key[:31]
+        self.key = self.sanitize_key(new_key)
 
         if not self.key:
             raise ValueError("No key/password availalbe")
@@ -208,12 +223,13 @@ class Compal:
         Login. Allow this function to override the key.
         """
 
+        key = self.sanitize_key(key) if key else self.key
         res = self.xml_setter(
             SetFunction.LOGIN,
             OrderedDict(
                 [
                     ("Username", self.username),
-                    ("Password", key[:31] if key else self.key),
+                    ("Password", key),
                 ]
             ),
         )
@@ -1539,7 +1555,7 @@ class FuncScanner(object):
     def __init__(self, modem, pos, key):
         self.modem = modem
         self.current_pos = pos
-        self.key = key[:31]
+        self.key = modem.sanitize_key(key)
         self.last_login = -1
 
     @property
