@@ -1,7 +1,8 @@
 """Objects used by CH7465LG"""
+
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional, List
+from typing import List, Optional
 
 
 @dataclass

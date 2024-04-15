@@ -1,6 +1,7 @@
 """
 Client for the Compal CH7465LG/Ziggo Connect box cable modem
 """
+
 import inspect
 import io
 import itertools
@@ -11,8 +12,8 @@ import urllib
 from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
-from xml.dom import minidom
 from hashlib import sha256
+from xml.dom import minidom
 
 import requests
 from lxml import etree
@@ -25,9 +26,9 @@ from .models import (
     GuestNetworkEnabling,
     GuestNetworkProperties,
     GuestNetworkSettings,
-    NatMode,
     IPv6FilterRule,
     IPv6FilterRuleProto,
+    NatMode,
     PortForward,
     Proto,
     RadioSettings,
@@ -681,9 +682,11 @@ class Filters(object):
                     int(
                         FilterIpRange.all
                         if src_addr == "::"
-                        else FilterIpRange.range
-                        if src_prefix != 128
-                        else FilterIpRange.single
+                        else (
+                            FilterIpRange.range
+                            if src_prefix != 128
+                            else FilterIpRange.single
+                        )
                     ),
                 ),
                 (
@@ -691,9 +694,11 @@ class Filters(object):
                     int(
                         FilterIpRange.all
                         if dst_addr == "::"
-                        else FilterIpRange.range
-                        if dst_prefix != 128
-                        else FilterIpRange.single
+                        else (
+                            FilterIpRange.range
+                            if dst_prefix != 128
+                            else FilterIpRange.single
+                        )
                     ),
                 ),
                 ("PortRange", "2"),  # manual port selection
