@@ -1288,6 +1288,7 @@ class DHCPSettings:
 
     def __init__(self, modem):
         self.modem = modem
+        self.parser = etree.XMLParser(recover=True)
 
     def add_static_lease(self, lease_ip, lease_mac):
         """
@@ -1297,6 +1298,27 @@ class DHCPSettings:
             SetFunction.STATIC_DHCP_LEASE,
             {"data": "ADD,{ip},{mac};".format(ip=lease_ip, mac=lease_mac)},
         )
+
+    def del_static_lease(self, lease_ip, lease_mac):
+        """
+        Delete a static DHCP lease
+        """
+        return self.modem.xml_setter(
+            SetFunction.STATIC_DHCP_LEASE,
+            {"data": "DEL,{ip},{mac};".format(ip=lease_ip, mac=lease_mac)},
+        )
+
+    def get_static_leases(self):
+        """
+        Get all static leases
+        """
+        xml_content = self.modem.xml_getter(GetFunction.BASICDHCP, {}).content
+        tree = etree.fromstring(xml_content, parser=self.parser)
+        for host in tree.findall("ReserveIpadrr"):
+            yield {
+                "lease_ip": host.find("LeasedIP").text,
+                "lease_mac": host.find("MacAddress").text,
+            }
 
     def set_upnp_status(self, enabled):
         """

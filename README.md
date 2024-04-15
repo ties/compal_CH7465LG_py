@@ -100,7 +100,15 @@ wifi.update_wifi_settings(new_settings)
 
 print(wifi.wifi_settings)
 
-# And/or DHCPSettings
+# And/or Make all dhcp adresses static:
+
+dhcp = DHCPSettings(modem)
+lan_table = LanTable(modem)
+for client in (*lan_table.get_lan(), *lan_table.get_wifi()):
+    dhcp.add_static_lease(
+        lease_ip=client["IPv4Addr"].split("/")[0], lease_mac=client["MACAddr"]
+    )
+
 
 # If you want to go back to 'normal':
 # modem.reboot() # or
