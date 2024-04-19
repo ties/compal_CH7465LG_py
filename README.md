@@ -31,6 +31,9 @@ code of these components, to an e-mail address on the Compal site, have not been
 Changelog
 ---------
 
+### 0.6.0
+  * Support for static DHCP leases was added by @do3cc
+
 ### 0.5.1
   * Support for hashed (single-sha256) passwords was added by @7FM
 
