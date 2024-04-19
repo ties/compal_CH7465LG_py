@@ -1,6 +1,7 @@
 """
 Client for the Compal CH7465LG/Ziggo Connect box cable modem
 """
+
 import inspect
 import io
 import itertools
@@ -11,8 +12,8 @@ import urllib
 from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
-from xml.dom import minidom
 from hashlib import sha256
+from xml.dom import minidom
 
 import requests
 from lxml import etree
@@ -25,9 +26,9 @@ from .models import (
     GuestNetworkEnabling,
     GuestNetworkProperties,
     GuestNetworkSettings,
-    NatMode,
     IPv6FilterRule,
     IPv6FilterRuleProto,
+    NatMode,
     PortForward,
     Proto,
     RadioSettings,
@@ -681,9 +682,11 @@ class Filters(object):
                     int(
                         FilterIpRange.all
                         if src_addr == "::"
-                        else FilterIpRange.range
-                        if src_prefix != 128
-                        else FilterIpRange.single
+                        else (
+                            FilterIpRange.range
+                            if src_prefix != 128
+                            else FilterIpRange.single
+                        )
                     ),
                 ),
                 (
@@ -691,9 +694,11 @@ class Filters(object):
                     int(
                         FilterIpRange.all
                         if dst_addr == "::"
-                        else FilterIpRange.range
-                        if dst_prefix != 128
-                        else FilterIpRange.single
+                        else (
+                            FilterIpRange.range
+                            if dst_prefix != 128
+                            else FilterIpRange.single
+                        )
                     ),
                 ),
                 ("PortRange", "2"),  # manual port selection
@@ -1283,6 +1288,7 @@ class DHCPSettings:
 
     def __init__(self, modem):
         self.modem = modem
+        self.parser = etree.XMLParser(recover=True)
 
     def add_static_lease(self, lease_ip, lease_mac):
         """
@@ -1292,6 +1298,27 @@ class DHCPSettings:
             SetFunction.STATIC_DHCP_LEASE,
             {"data": "ADD,{ip},{mac};".format(ip=lease_ip, mac=lease_mac)},
         )
+
+    def del_static_lease(self, lease_ip, lease_mac):
+        """
+        Delete a static DHCP lease
+        """
+        return self.modem.xml_setter(
+            SetFunction.STATIC_DHCP_LEASE,
+            {"data": "DEL,{ip},{mac};".format(ip=lease_ip, mac=lease_mac)},
+        )
+
+    def get_static_leases(self):
+        """
+        Get all static leases
+        """
+        xml_content = self.modem.xml_getter(GetFunction.BASICDHCP, {}).content
+        tree = etree.fromstring(xml_content, parser=self.parser)
+        for host in tree.findall("ReserveIpadrr"):
+            yield {
+                "lease_ip": host.find("LeasedIP").text,
+                "lease_mac": host.find("MacAddress").text,
+            }
 
     def set_upnp_status(self, enabled):
         """
