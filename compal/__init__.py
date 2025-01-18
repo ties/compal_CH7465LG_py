@@ -899,16 +899,26 @@ class WifiSettings(object):
                 band_mode = None
             return band_mode
 
-        return RadioSettings(
-            nv_country=int(xml.find("NvCountry").text),
-            band_mode=get_band_mode(),
-            channel_range=int(xml.find("ChannelRange").text),
-            bss_coexistence=int(xml.find("BssCoexistence").text),
-            son_admin_status=int(xml.find("SONAdminStatus").text),
-            smart_wifi=int(xml.find("SONOperationalStatus").text),
-            radio_2g=radio_2g,
-            radio_5g=radio_5g,
-        )
+        radio_settings = RadioSettings()
+
+        properties = {
+            "nv_country": "NvCountry",
+            "channel_range": "ChannelRange",
+            "bss_coexistence": "BssCoexistence",
+            "son_admin_status": "SONAdminStatus",
+            "smart_wifi": "SONOperationalStatus",
+        }
+
+        for prop, tag in properties.items():
+            elem = xml.find(tag)
+            if elem is not None and elem.text is not None:
+                setattr(radio_settings, prop, int(elem.text))
+
+        radio_settings.band_mode = get_band_mode()
+        radio_settings.radio_2g = radio_2g
+        radio_settings.radio_5g = radio_5g
+
+        return radio_settings
 
     def __set_wifi_settings(self, settings, setter_code, debug=True):
         """
